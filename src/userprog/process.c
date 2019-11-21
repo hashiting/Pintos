@@ -37,9 +37,11 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
+  char *real_file_name;
+  char *save_ptr;
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  real_file_name = strsok_r(file_name, " ", &save_ptr);
+  tid = thread_create (real_file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -53,7 +55,8 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
-
+  char *save_ptr;
+  file_name = strsok_r(file_name, " ", &save_ptr);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -72,6 +75,41 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
+  char *stack_pointer = (char*)if_.esp;
+  char *arg[128];
+  int number = 0;
+  for(int i = 0;file_name!= NULL;file_name = strsok_r(NULL, " ", &save_ptr),i++){
+    stack_pointer -= strlen(file_name);
+    stack_pointer--;
+    strlcpy(stack_pointer,file_name,strlen(file_name)+2);
+    arg[i] = stack_pointer;
+    number++;
+  }
+  //word align
+  while((int)stack_pointer %4 != 0){
+    stack_pointer--;
+  }
+  //pad zero
+  int *temp = stack_pointer - 4;
+  temp--;
+  *temp = 0;
+  //place the argument pointers to stack;
+  
+  for(int i = number-1;i>=0;i++){
+    temp--;
+    *temp = (int *)arg[i];
+  }
+
+  //place number of argument
+  temp --;
+  *temp = temp+2;
+  temp --;
+  *temp = number;
+  temp--;
+  //place return address 0
+  *temp = 0;
+  stack_pointer = temp+1;
+  if_.esp = stack_pointer;
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
@@ -113,6 +151,7 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
+      printf ("%s: exit(%d)\n", cur->name,cur->record);
     }
 }
 

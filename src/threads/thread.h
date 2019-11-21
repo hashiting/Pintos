@@ -4,7 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-
+#include "synch.h"
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -89,9 +89,10 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-
+    struct semaphore sema;              /*sema blocked*/
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    int64_t time_block_left;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -100,6 +101,9 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+    int record;                         //exit code
+    struct thread* parent;
+    struct list childs;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -118,6 +122,7 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
+void thread_block_check_func(struct thread *t, void *aux);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);

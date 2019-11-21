@@ -120,7 +120,7 @@ thread_start (void)
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
-thread_tick (void) 
+thread_tick(void) 
 {
   struct thread *t = thread_current ();
 
@@ -182,7 +182,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  t->time_block_left = 0;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -240,6 +240,23 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+}
+
+/*
+Give a thread, check block state and reduce the bolck tick by 1.
+*/
+void 
+thread_block_check_func(struct thread *t, void *aux)
+{
+  if(t->status != THREAD_BLOCKED)
+      return;
+  if(t->time_block_left <= 0)
+      return;
+  t->time_block_left--;
+  if(t->time_block_left == 0)
+      //thread_unblock(t);
+      sema_up(&(t->sema));
+  return;
 }
 
 /* Returns the name of the running thread. */
@@ -301,14 +318,14 @@ thread_exit (void)
 void
 thread_yield (void) 
 {
-  struct thread *cur = thread_current ();
+  struct thread *cur = thread_current ();// get current thread
   enum intr_level old_level;
   
-  ASSERT (!intr_context ());
+  ASSERT (!intr_context ()); // no external interrupt
 
-  old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  old_level = intr_disable (); // dis interr
+  if (cur != idle_thread) // not idle
+    list_push_back (&ready_list, &cur->elem);// running to ready
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -463,7 +480,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
+  t->record = 0;
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

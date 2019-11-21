@@ -70,9 +70,9 @@ timer_calibrate (void)
 int64_t
 timer_ticks (void) 
 {
-  enum intr_level old_level = intr_disable ();
+  enum intr_level old_level = intr_disable (); // store the interrupt state before and disable
   int64_t t = ticks;
-  intr_set_level (old_level);
+  intr_set_level (old_level);// recover state
   return t;
 }
 
@@ -89,11 +89,21 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  if(ticks <= 0)
+      return;
+  int64_t start = timer_ticks ();// get current time as start t1
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  ASSERT (intr_get_level () == INTR_ON);// intr enable 
+  //while (timer_elapsed (start) < ticks) // while (current - start) is smaller than time slice ticks, do thread_yield()
+  //  thread_yield ();
+  enum intr_level old_level = intr_disable ();
+  struct thread *current_thread = thread_current ();
+  current_thread->time_block_left = ticks;
+  //thread_block ();
+  sema_init(&(current_thread->sema),0);
+  sema_down(&(current_thread->sema));
+  intr_set_level (old_level);
+  return;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +182,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  thread_foreach(thread_block_check_func,NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

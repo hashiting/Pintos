@@ -64,8 +64,6 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(*(stack_pointer+1));
       f->eax = process_execute(*(stack_pointer+1));
       break;
-    
-    case 
 
   }
   printf ("system call!\n");

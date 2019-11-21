@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "lib/string.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -40,7 +41,7 @@ process_execute (const char *file_name)
   char *real_file_name;
   char *save_ptr;
   /* Create a new thread to execute FILE_NAME. */
-  real_file_name = strsok_r(file_name, " ", &save_ptr);
+  real_file_name = strtok_r(file_name, " ", &save_ptr);
   tid = thread_create (real_file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -56,7 +57,7 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
   char *save_ptr;
-  file_name = strsok_r(file_name, " ", &save_ptr);
+  file_name = strtok_r(file_name, " ", &save_ptr);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -78,7 +79,7 @@ start_process (void *file_name_)
   char *stack_pointer = (char*)if_.esp;
   char *arg[128];
   int number = 0;
-  for(int i = 0;file_name!= NULL;file_name = strsok_r(NULL, " ", &save_ptr),i++){
+  for(int i = 0;file_name!= NULL;file_name = strtok_r(NULL, " ", &save_ptr),i++){
     stack_pointer -= strlen(file_name);
     stack_pointer--;
     strlcpy(stack_pointer,file_name,strlen(file_name)+2);

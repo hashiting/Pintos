@@ -38,6 +38,7 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+
   char *real_file_name;
   char *save_ptr;
   /* Create a new thread to execute FILE_NAME. */
@@ -82,8 +83,8 @@ start_process (void *file_name_)
   for(int i = 0;file_name!= NULL;file_name = strtok_r(NULL, " ", &save_ptr),i++){
     stack_pointer -= strlen(file_name);
     stack_pointer--;
-    strlcpy(stack_pointer,file_name,strlen(file_name)+2);
-    arg[i] = stack_pointer;
+    memcpy(stack_pointer,file_name,strlen(file_name)+1);
+    arg[i] = (int)stack_pointer;
     number++;
   }
   //word align
@@ -91,25 +92,25 @@ start_process (void *file_name_)
     stack_pointer--;
   }
   //pad zero
+  int zero = 0;
   int *temp = stack_pointer - 4;
-  temp--;
-  *temp = 0;
+  memcpy(temp,&zero,sizeof(int));
   //place the argument pointers to stack;
   
   for(int i = number-1;i>=0;i++){
-    temp--;
-    *temp = (int *)arg[i];
+    temp-=4;
+    memcpy(temp,&arg[i],sizeof(int));
   }
 
   //place number of argument
-  temp --;
-  *temp = temp+2;
-  temp --;
-  *temp = number;
-  temp--;
+  temp -=4;
+  memcpy(temp,(int)(temp+4),sizeof(int));
+  temp -=4;
+  memcpy(temp,&number,sizeof(int));
+  temp-=4;
   //place return address 0
-  *temp = 0;
-  stack_pointer = temp+1;
+  memcpy(temp,&zero,sizeof(int));
+  stack_pointer = temp;
   if_.esp = stack_pointer;
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();

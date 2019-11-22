@@ -6,6 +6,7 @@
 #include "threads/vaddr.h"
 #include "pagedir.h"
 #include "process.h"
+#include "filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -59,6 +60,80 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = process_execute(*(stack_pointer+1));
       break;
 
+    case SYS_CREATE:
+      check_address(stack_pointer+4);
+      check_address(*(stack_pointer+4));
+      check_address(stack_pointer+5);
+      file_sema_down();
+      f->eax = filesys_create(*(stack_pointer+4),*(stack_pointer+5));
+      file_sema_up();
+      break;
+
+    case SYS_REMOVE:
+      check_address((stack_pointer+1));
+      check_address(*(stack_pointer+1));
+      file_sema_down();
+      f->eax = filesys_remove(*(stack_pointer+1));
+      file_sema_up();
+      break;
+
+    case SYS_READ:
+      check_address(stack_pointer+5);
+      check_address(stack_pointer+6);
+      check_address(*(stack_pointer+6));
+      check_address(stack_pointer+7);
+      file_sema_down();
+      //to do
+      file_sema_up();
+      break;
+
+    case SYS_WRITE:
+      printf ("write file!\n");
+      check_address(stack_pointer+5);
+      check_address(stack_pointer+6);
+      check_address(*(stack_pointer+6));
+      check_address(stack_pointer+7);
+      file_sema_down();
+      //to do
+      file_sema_up();
+      printf ("write finish!\n");
+      break;
+
+    case SYS_OPEN:
+      check_address((stack_pointer+1));
+      check_address(*(stack_pointer+1));
+      file_sema_down();
+      //to do
+      file_sema_up();
+      break;
+
+    case SYS_CLOSE:
+      check_address(stack_pointer+1);
+      file_sema_down();
+      //to do
+      file_sema_up();
+      break;
+
+    case SYS_FILESIZE:
+      check_address(stack_pointer+1);
+      file_sema_down();
+      f->eax = file_length(*(stack_pointer));//to do
+      file_sema_up();
+      break;
+
+    case SYS_SEEK:
+      check_address(stack_pointer+5);
+      file_sema_down();
+      //to do
+      file_sema_up();
+      break;
+
+    case SYS_TELL:
+      check_address(stack_pointer+1);
+      file_sema_down();
+      //to do
+      file_sema_up();
+      break;
   }
   printf ("system call!\n");
   thread_exit ();

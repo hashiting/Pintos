@@ -7,6 +7,7 @@
 #include "pagedir.h"
 #include "process.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -31,6 +32,14 @@ void check_address(void *p){
   }
 }
 
+struct file* fd2fp(int fd){
+  for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
+        if(list_entry(e,struct file_search,elem)->fd == fd){
+          return list_entry(e,struct file_search,elem)->fp;
+        }
+    }
+  return NULL;
+}
 
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
@@ -51,19 +60,19 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_WAIT:
       check_address(stack_pointer+1);
-      f->eax = process_wait(*(stack_pointer+1));//pass tid of process 
+      f->eax = process_wait(*(stack_pointer+1));//pass tid of process to do
       break;
 
     case SYS_EXEC:
       check_address(stack_pointer+1);
       check_address(*(stack_pointer+1));
-      f->eax = process_execute(*(stack_pointer+1));
+      f->eax = process_execute(*(stack_pointer+1));//to do
       break;
 
     case SYS_CREATE:
-      check_address(stack_pointer+4);
-      check_address(*(stack_pointer+4));
-      check_address(stack_pointer+5);
+      check_address(stack_pointer+4);//address of address of file head
+      check_address(*(stack_pointer+4));//address of file head
+      check_address(stack_pointer+5);//address of file size
       file_sema_down();
       f->eax = filesys_create(*(stack_pointer+4),*(stack_pointer+5));
       file_sema_up();
@@ -71,30 +80,42 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_REMOVE:
       check_address((stack_pointer+1));
-      check_address(*(stack_pointer+1));
+      check_address(*(stack_pointer+1));//file name
       file_sema_down();
       f->eax = filesys_remove(*(stack_pointer+1));
       file_sema_up();
       break;
 
     case SYS_READ:
-      check_address(stack_pointer+5);
-      check_address(stack_pointer+6);
+      check_address(stack_pointer+5);//fd
+      check_address(stack_pointer+6);//void *buffer 
       check_address(*(stack_pointer+6));
-      check_address(stack_pointer+7);
+      check_address(stack_pointer+7);//size
       file_sema_down();
-      //to do
+      struct file* temp = fd2fp(*(stack_pointer+5));
+      if(temp==NULL){
+        f->eax = -1;
+      }
+      else{
+        f->eax = file_read(temp,*(stack_pointer+6),*(stack_pointer+7));
+      }
       file_sema_up();
       break;
 
     case SYS_WRITE:
       printf ("write file!\n");
-      check_address(stack_pointer+5);
-      check_address(stack_pointer+6);
+      check_address(stack_pointer+5);//fd
+      check_address(stack_pointer+6);//buffer
       check_address(*(stack_pointer+6));
-      check_address(stack_pointer+7);
+      check_address(stack_pointer+7);//size
       file_sema_down();
-      //to do
+      struct file* temp2 = fd2fp(*(stack_pointer+5));
+      if(temp2==NULL){
+        f->eax = -1;
+      }
+      else{
+        f->eax = file_write(temp2,*(stack_pointer+6),*(stack_pointer+7));
+      }
       file_sema_up();
       printf ("write finish!\n");
       break;
@@ -103,35 +124,47 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address((stack_pointer+1));
       check_address(*(stack_pointer+1));
       file_sema_down();
-      //to do
+      struct file* target_file = filesys_open(*(stack_pointer+1));
+      struct file_search* temp1 = malloc(sizeof(*temp1));
+      temp1->fp = target_file;
+      temp1->fd = thread_current()->increase_file_id_generate;
+      thread_current()->increase_file_id_generate++;
+      list_push_back(&thread_current()->files,&temp1->elem);
       file_sema_up();
       break;
 
     case SYS_CLOSE:
-      check_address(stack_pointer+1);
+      check_address(stack_pointer+1);//fd
       file_sema_down();
       //to do
+      for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
+        if(list_entry(e,struct file_search,elem)->fd == *(stack_pointer+1)){
+          file_close(list_entry(e,struct file_search,elem)->fp);
+          list_remove(e);
+        }
+      }
       file_sema_up();
       break;
 
     case SYS_FILESIZE:
-      check_address(stack_pointer+1);
+      check_address(stack_pointer+1);//get fd, convert fd to file pointer.
       file_sema_down();
-      f->eax = file_length(*(stack_pointer));//to do
+      f->eax = file_length(fd2fp(*(stack_pointer+1)));//to do
       file_sema_up();
       break;
 
     case SYS_SEEK:
-      check_address(stack_pointer+5);
+      check_address(stack_pointer+4);//fd
+      check_address(stack_pointer+5);//position
       file_sema_down();
-      //to do
+      file_seek(fd2fp(*(stack_pointer+4)),*(stack_pointer+5));//to do
       file_sema_up();
       break;
 
     case SYS_TELL:
       check_address(stack_pointer+1);
       file_sema_down();
-      //to do
+      f->eax = file_tell(fd2fp(*(stack_pointer+1)));//to do
       file_sema_up();
       break;
   }

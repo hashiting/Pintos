@@ -104,11 +104,19 @@ struct thread
     int record;                         //exit code
     struct thread* parent;
     struct list childs;
+    struct list files;                     //file list
+    int increase_file_id_generate;        //generate unique id for file
   };
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
+
+struct file_search{
+  struct file* fp;
+  int fd;
+  struct list_elem elem;
+};
 
 void file_sema_up(void);
 void file_sema_down(void);

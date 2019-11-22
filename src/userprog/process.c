@@ -38,12 +38,17 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
-  char *real_file_name;
+  //add
+  char *real_file_name = malloc(strlen(file_name)+1);
+  strlcpy (real_file_name, file_name, strlen(file_name)+1);
+  //printf("adsa\n");
+  //printf("%s\n",real_file_name);
   char *save_ptr;
   /* Create a new thread to execute FILE_NAME. */
-  real_file_name = strtok_r(file_name, " ", &save_ptr);
+  real_file_name = strtok_r(real_file_name, " ", &save_ptr);
+  //printf("%s\n\n",real_file_name);
   tid = thread_create (real_file_name, PRI_DEFAULT, start_process, fn_copy);
+  free(real_file_name);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -55,63 +60,72 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  char *file_copy = malloc(strlen(file_name)+1);
+  strlcpy(file_copy,file_name,strlen(file_name)+1);
   struct intr_frame if_;
   bool success;
+
   char *save_ptr;
-  file_name = strtok_r(file_name, " ", &save_ptr);
+  char *real_file_name;
+  real_file_name = strtok_r(file_name, " ", &save_ptr);
+  //printf("%s\n\n",file_copy);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
-
+  success = load (real_file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
-  palloc_free_page (file_name);
+  palloc_free_page (real_file_name);
+  //printf("test\n");
   if (!success) 
     thread_exit ();
 
+  //printf("test\n\n");
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  char *stack_pointer = (char*)if_.esp;
-  char *arg[128];
   int number = 0;
-  for(int i = 0;file_name!= NULL;file_name = strtok_r(NULL, " ", &save_ptr),i++){
-    stack_pointer -= strlen(file_name);
-    stack_pointer--;
-    memcpy(stack_pointer,file_name,strlen(file_name)+1);
-    arg[i] = (int)stack_pointer;
+  int arg[128];
+  char *arg_token = strtok_r(file_copy, " ", &save_ptr);
+  for(int i = 0;arg_token != NULL; arg_token =strtok_r(NULL, " ", &save_ptr),i++){
     number++;
-  }
-  //word align
-  while((int)stack_pointer %4 != 0){
-    stack_pointer--;
-  }
-  //pad zero
-  int zero = 0;
-  int *temp = stack_pointer - 4;
-  memcpy(temp,&zero,sizeof(int));
-  //place the argument pointers to stack;
-  
-  for(int i = number-1;i>=0;i++){
-    temp-=4;
-    memcpy(temp,&arg[i],sizeof(int));
+    //printf("%s\n",arg_token);
+    //printf("%d\n",(int)if_.esp);
+    if_.esp-=(strlen(arg_token)+1);
+    memcpy(if_.esp,arg_token,strlen(arg_token)+1);
+    arg[i] = (int)if_.esp;
   }
 
-  //place number of argument
-  temp -=4;
-  memcpy(temp,(int)(temp+4),sizeof(int));
-  temp -=4;
-  memcpy(temp,&number,sizeof(int));
-  temp-=4;
-  //place return address 0
-  memcpy(temp,&zero,sizeof(int));
-  stack_pointer = temp;
-  if_.esp = stack_pointer;
+  while((int)if_.esp%4!=0){
+    if_.esp--;
+  }
+
+
+  int zero=0;
+  if_.esp-=4;
+  memcpy(if_.esp,&zero, sizeof(int));
+
+  for(int i=number-1; i>=0; i--){
+    if_.esp-=4;
+    memcpy(if_.esp,&arg[i],sizeof(int));
+  }
+
+  int arg0=(int)if_.esp;
+  if_.esp-=4;
+  memcpy(if_.esp,&arg0,sizeof(int));
+
+  if_.esp-=4;
+  memcpy(if_.esp,&number,sizeof(int));
+
+  if_.esp-=4;
+  memcpy(if_.esp,&zero,sizeof(int));
+
+
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }

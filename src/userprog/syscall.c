@@ -22,13 +22,7 @@ void unexpect_exit(void){
 
 
 void check_address(void *p){
-  if(p == NULL){
-    unexpect_exit();
-  }
-  else if(!is_user_vaddr(p)){
-    unexpect_exit();
-  }
-  else if(!pagedir_get_page(thread_current()->pagedir,p)){
+  if(p == NULL||!is_user_vaddr(p)||!pagedir_get_page(thread_current()->pagedir,p)){
     unexpect_exit();
   }
   else{
@@ -43,7 +37,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   int *stack_pointer = f->esp;
   check_address(stack_pointer);
   int system_call = *(stack_pointer);
-
+  printf("%d\n",system_call);
   switch(system_call){
     case SYS_HALT:
       shutdown_power_off();
@@ -51,7 +45,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_EXIT:
       check_address(stack_pointer+1);
-      thread_current()->record = *stack_pointer;
+      thread_current()->record = *(stack_pointer+1);
       thread_exit ();
 
     case SYS_WAIT:

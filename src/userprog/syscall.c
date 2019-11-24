@@ -42,6 +42,33 @@ struct file* fd2fp(int fd){
   return NULL;
 }
 
+void exit_process(int record)
+{
+  struct list_elem *element;
+
+  // FOR EACH ELEMENT IN THE LIST...
+  for (element = list_begin (&thread_current()->parent->childs); element != list_end (&thread_current()->parent->childs); element = list_next (element))
+  {
+    struct child *f = list_entry (element, struct child, elem);
+  
+    // IF VIRTUAL MEMORY IS READING THE SAME AS THGE KERNEL THEN ASSIGN THE STATUS OF THE FRAME
+    if(f->tid == thread_current()->tid)
+    {
+      f->used = true;
+      f->record = record;
+    }
+  }
+
+
+  thread_current()->record = record;
+
+  if(thread_current()->parent->wait_tid == thread_current()->tid)
+    sema_up(&thread_current()->parent->child_lock);
+
+  // EXIT THE PROGRAM
+  thread_exit();
+}
+
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
@@ -57,11 +84,11 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_EXIT:
       check_address(stack_pointer+1);
       thread_current()->record = *(stack_pointer+1);
-      thread_exit ();
+      exit_process(*(stack_pointer+1));
 
     case SYS_WAIT:
       check_address(stack_pointer+1);
-      f->eax = process_wait(*(stack_pointer+1));//pass tid of process to do
+      f->eax = process_wait((char*)*(stack_pointer+1));//pass tid of process to do
       break;
 
     case SYS_EXEC:
@@ -95,10 +122,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       file_sema_down();
       if(*(stack_pointer+1)==0)
       {
-        int i;
         uint8_t* buffer = *(stack_pointer+2);
-        for(i=0;i<*(stack_pointer+3);i++)
-          buffer[i] = input_getc();
+        for(int i = 0;i < *(stack_pointer+3);i++){
+            buffer[i] = input_getc();
+        }
         f->eax = *(stack_pointer+3);
       }
       else{

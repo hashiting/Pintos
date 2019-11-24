@@ -104,8 +104,12 @@ struct thread
     int record;                         //exit code
     struct thread* parent;
     struct list childs;
+    struct semaphore child_lock;
     struct list files;                     //file list
     int increase_file_id_generate;        //generate unique id for file
+    bool success;
+    struct file *self;
+    int wait_tid;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -116,6 +120,13 @@ struct file_search{
   struct file* fp;
   int fd;
   struct list_elem elem;
+};
+
+struct child {
+      int tid;
+      struct list_elem elem;
+      int record;
+      bool used;
 };
 
 void file_sema_up(void);

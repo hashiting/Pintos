@@ -192,9 +192,11 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-  t->time_block_left = 0;
-  list_init(&t->files);
-  t->increase_file_id_generate = 3;
+  struct child* c = malloc(sizeof(*c));
+  c->tid = tid;
+  c->record = t->record;
+  c->used = false;
+  list_push_back (&running_thread()->childs, &c->elem);
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -319,6 +321,7 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
+
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -492,7 +495,17 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  t->time_block_left = 0;
+  t->increase_file_id_generate = 3;
   t->record = 0;
+  list_init (&t->childs);
+  t->parent = running_thread();
+  t->wait_tid = -1;
+  t->self = NULL;
+  list_init (&t->files);
+  sema_init(&t->child_lock, 0);
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

@@ -205,6 +205,7 @@ thread_create (const char *name, int priority,
 
 
 
+  t->increase_file_id_generate = 3;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;

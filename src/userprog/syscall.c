@@ -34,6 +34,7 @@ void check_address(void *p){
 
 struct file* fd2fp(int fd){
   for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
+        printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
         if(list_entry(e,struct file_search,elem)->fd == fd){
           return list_entry(e,struct file_search,elem)->fp;
         }
@@ -71,11 +72,11 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_CREATE:
-      check_address(stack_pointer+4);//address of address of file head
-      check_address(*(stack_pointer+4));//address of file head
-      check_address(stack_pointer+5);//address of file size
+      check_address(stack_pointer+1);//address of address of file head
+      check_address(*(stack_pointer+1));//address of file head
+      check_address(stack_pointer+2);//address of file size
       file_sema_down();
-      f->eax = filesys_create(*(stack_pointer+4),*(stack_pointer+5));
+      f->eax = filesys_create(*(stack_pointer+1),*(stack_pointer+2));
       file_sema_up();
       break;
 
@@ -88,34 +89,55 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_READ:
-      check_address(stack_pointer+5);//fd
-      check_address(stack_pointer+6);//void *buffer 
-      check_address(*(stack_pointer+6));
-      check_address(stack_pointer+7);//size
+      check_address(stack_pointer+1);//fd
+      check_address(stack_pointer+2);//void *buffer 
+      check_address(*(stack_pointer+2));
+      check_address(stack_pointer+3);//size
       file_sema_down();
-      struct file* temp = fd2fp(*(stack_pointer+5));
-      if(temp==NULL){
-        f->eax = -1;
+      if(*(stack_pointer+1)==0)
+      {
+        int i;
+        uint8_t* buffer = *(stack_pointer+2);
+        for(i=0;i<*(stack_pointer+3);i++)
+          buffer[i] = input_getc();
+        f->eax = *(stack_pointer+3);
       }
       else{
-        f->eax = file_read(temp,*(stack_pointer+6),*(stack_pointer+7));
+        struct file* temp = fd2fp(*(stack_pointer+1));
+        if(temp==NULL){
+          f->eax = -1;
+        }
+        else{
+          f->eax = file_read(temp,*(stack_pointer+2),*(stack_pointer+3));
+        }
       }
       file_sema_up();
       break;
 
     case SYS_WRITE:
       printf ("write file!\n");
-      check_address(stack_pointer+5);//fd
-      check_address(stack_pointer+6);//buffer
-      check_address(*(stack_pointer+6));
-      check_address(stack_pointer+7);//size
+      check_address(stack_pointer+1);//fd
+      check_address(stack_pointer+2);//buffer
+      check_address(*(stack_pointer+2));
+      check_address(stack_pointer+3);//size
       file_sema_down();
-      struct file* temp2 = fd2fp(*(stack_pointer+5));
-      if(temp2==NULL){
-        f->eax = -1;
+      printf("%d\n",*(stack_pointer+1));
+      printf("%d\n",*(stack_pointer+3));
+      if(*(stack_pointer+1)==1)
+      {
+        putbuf(*(stack_pointer+2),*(stack_pointer+3));
+        f->eax = *(stack_pointer+3);
       }
       else{
-        f->eax = file_write(temp2,*(stack_pointer+6),*(stack_pointer+7));
+        struct file* temp2 = fd2fp(*(stack_pointer+1));
+        if(temp2==NULL){
+          printf("no find\n");
+          f->eax = -1;
+        }
+        else{
+          f->eax = file_write(temp2,*(stack_pointer+2),*(stack_pointer+3));
+          printf("a%d\n",f->eax);
+        }
       }
       file_sema_up();
       printf ("write finish!\n");
@@ -155,10 +177,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_SEEK:
-      check_address(stack_pointer+4);//fd
-      check_address(stack_pointer+5);//position
+      check_address(stack_pointer+1);//fd
+      check_address(stack_pointer+2);//position
       file_sema_down();
-      file_seek(fd2fp(*(stack_pointer+4)),*(stack_pointer+5));//to do
+      file_seek(fd2fp(*(stack_pointer+1)),*(stack_pointer+2));//to do
       file_sema_up();
       break;
 

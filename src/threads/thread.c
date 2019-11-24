@@ -194,7 +194,7 @@ thread_create (const char *name, int priority,
   tid = t->tid = allocate_tid ();
   t->time_block_left = 0;
   list_init(&t->files);
-  t->increase_file_id_generate = 1;
+  t->increase_file_id_generate = 3;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;

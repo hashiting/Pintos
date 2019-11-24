@@ -77,7 +77,7 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (real_file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
-  palloc_free_page (real_file_name);
+  palloc_free_page (file_name);
   //printf("test\n");
   if (!success) 
     thread_exit ();
@@ -154,6 +154,7 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  printf("exit begin\n");
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -169,6 +170,7 @@ process_exit (void)
       pagedir_destroy (pd);
       printf ("%s: exit(%d)\n", cur->name,cur->record);
     }
+  printf("exit end\n");
 }
 
 /* Sets up the CPU for running user code in the current

@@ -1,0 +1,56 @@
+Exit code:
+    implement in process_exit();
+    if is user process, print.
+
+Argument passing:
+    implement in process_execute() and start_process();
+    1.tokenizing input string.
+    2.push the address into stack.
+    3.do the alignment.
+    4.push zero and the address of argument.
+    5.push number of argument.
+    6.push zero.
+
+System call:
+    implement in syscall.c,thread.h,thread.c,process.c
+    1.halt:
+        call shutdown function
+    2.exit:
+        get exit code in stack;
+    3.wait:
+
+    4.exec:
+
+    5.create:
+        get file point,size from stack;
+        call filesys function.
+    6.remove:
+        get file name from stack;
+        call filesys function.
+    7.read/write:
+        get fd,buffer and size from stack;
+        convert fd to file pointer;
+        call file read/write.
+    8.open:
+        get file name from stack;
+        call file_open;
+        add file to thread's file list and generate a fd.
+    9.close:
+        get fd from stack;
+        check own file list,search fd.
+        call file_close and remove from the list.
+    10.filezize:
+        get fd from stack;
+        convert fd to fp;
+        call file_size;
+    11.seek:
+        get fd and position from stack;
+        convert fd to fp;
+        call file_seek;
+    12.tell:
+        get fd from stack;
+        convert fd to fp;
+        call file_tell;
+
+
+

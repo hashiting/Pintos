@@ -79,9 +79,10 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (real_file_name);
   //printf("test\n");
-  if (!success) 
+  if (!success) {
     thread_exit ();
-
+  }
+  
   //printf("test\n\n");
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -142,7 +143,32 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+  struct list_elem *e;
+  struct list *child_list = &thread_current()->childs;
+  struct child_thread *ct = NULL;
+
+  // find child of pid
+  for (e = list_begin(child_list); e != list_end(child_list); e = list_next(e)) {
+    ct = list_entry(e, struct child_thread, child_thread_elem);
+    if (ct->tid == child_tid) {
+      if (!ct->waiting) {
+        ct->waiting = true;
+        sema_down(&ct->sema);
+        break;
+      }
+      else return -1;
+    }
+  }
+  if (e == list_end(child_list))
+    return -1;
+
+  // when child 
+  int status = ct->exit_status;
+  list_remove(e);
+  free(ct);
+
+  return status;
+
 }
 
 /* Free the current process's resources. */

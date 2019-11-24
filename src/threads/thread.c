@@ -195,6 +195,16 @@ thread_create (const char *name, int priority,
   t->time_block_left = 0;
   list_init(&t->files);
   t->increase_file_id_generate = 1;
+
+  t->child_thread_ptr = malloc(sizeof(struct child_thread));
+  t->child_thread_ptr->tid=tid;
+  t->child_thread_ptr->exit_status=UINT32_MAX;
+  t->child_thread_ptr->waiting = false;
+  sema_init(&t->child_thread_ptr->sema, 0);
+  list_push_back (&thread_current()->childs, &t->child_thread_ptr->child_thread_elem);
+
+
+
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -319,6 +329,14 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
+
+  printf("%s: exit(%d)\n",thread_name(),thread_current()->status);
+
+  thread_current()->child_thread_ptr->exit_status = thread_current()->status;
+  sema_up(&thread_current()->child_thread_ptr->sema);
+
+
+
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();

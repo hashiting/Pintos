@@ -1,6 +1,5 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
-
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -80,6 +79,16 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+
+
+struct child_thread{
+  tid_t tid;
+  int exit_status;
+  struct list_elem child_thread_elem;
+  bool waiting;
+  struct semaphore sema;
+};
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -106,6 +115,9 @@ struct thread
     struct list childs;
     struct list files;                     //file list
     int increase_file_id_generate;        //generate unique id for file
+
+    struct child_thread *child_thread_ptr;
+
   };
 
 /* If false (default), use round-robin scheduler.

@@ -34,7 +34,7 @@ void check_address(void *p){
 
 struct file* fd2fp(int fd){
   for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
-        printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
+        //printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
         if(list_entry(e,struct file_search,elem)->fd == fd){
           return list_entry(e,struct file_search,elem)->fp;
         }
@@ -48,7 +48,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   int *stack_pointer = f->esp;
   check_address(stack_pointer);
   int system_call = *(stack_pointer);
-  printf("%d\n",system_call);
+  //printf("%d\n",system_call);
   switch(system_call){
     case SYS_HALT:
       shutdown_power_off();
@@ -65,7 +65,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_EXEC:
-      printf("SYS_EXEC,\n");
+      //printf("SYS_EXEC,\n");
       check_address(stack_pointer+1);
       check_address(*(stack_pointer+1));
       f->eax = process_execute(*(stack_pointer+1));//to do
@@ -115,14 +115,14 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_WRITE:
-      printf ("write file!\n");
+      //printf ("write file!\n");
       check_address(stack_pointer+1);//fd
       check_address(stack_pointer+2);//buffer
       check_address(*(stack_pointer+2));
       check_address(stack_pointer+3);//size
       file_sema_down();
-      printf("%d\n",*(stack_pointer+1));
-      printf("%d\n",*(stack_pointer+3));
+      //printf("%d\n",*(stack_pointer+1));
+      //printf("%d\n",*(stack_pointer+3));
       if(*(stack_pointer+1)==1)
       {
         putbuf(*(stack_pointer+2),*(stack_pointer+3));
@@ -131,16 +131,16 @@ syscall_handler (struct intr_frame *f UNUSED)
       else{
         struct file* temp2 = fd2fp(*(stack_pointer+1));
         if(temp2==NULL){
-          printf("no find\n");
+          //printf("no find\n");
           f->eax = -1;
         }
         else{
           f->eax = file_write(temp2,*(stack_pointer+2),*(stack_pointer+3));
-          printf("a%d\n",f->eax);
+          //printf("a%d\n",f->eax);
         }
       }
       file_sema_up();
-      printf ("write finish!\n");
+      //printf ("write finish!\n");
       break;
 
     case SYS_OPEN:
@@ -191,6 +191,6 @@ syscall_handler (struct intr_frame *f UNUSED)
       file_sema_up();
       break;
   }
-  printf ("system call!\n");
+  //printf ("system call!\n");
   thread_exit ();
 }

@@ -180,7 +180,7 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  printf("exit begin\n");
+  //printf("exit begin\n");
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -196,7 +196,7 @@ process_exit (void)
       pagedir_destroy (pd);
       printf ("%s: exit(%d)\n", cur->name,cur->record);
     }
-  printf("exit end\n");
+  //printf("exit end\n");
 }
 
 /* Sets up the CPU for running user code in the current

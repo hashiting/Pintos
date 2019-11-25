@@ -201,6 +201,7 @@ thread_create (const char *name, int priority,
   t->child_thread_ptr->exit_status=UINT32_MAX;
   t->child_thread_ptr->waiting = false;
   sema_init(&t->child_thread_ptr->sema, 0);
+  list_init(&thread_current()->childs);
   list_push_back (&thread_current()->childs, &t->child_thread_ptr->child_thread_elem);
 
 

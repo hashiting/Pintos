@@ -39,6 +39,7 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
   //add
+  //printf("adsa\n");
   char *real_file_name = malloc(strlen(file_name)+1);
   strlcpy (real_file_name, file_name, strlen(file_name)+1);
   //printf("adsa\n");
@@ -126,6 +127,7 @@ start_process (void *file_name_)
 
     thread_current()->parent->success = true;
     sema_up(&thread_current()->parent->child_lock);
+    free(arg);
   }
     
 
@@ -199,6 +201,16 @@ process_exit (void)
      to the kernel-only page directory. */
   printf("exit begin\n");
   pd = cur->pagedir;
+
+  file_sema_down();
+      if(thread_current()->self != NULL)
+        file_close(thread_current()->self);
+      for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
+          file_close(list_entry(e,struct file_search,elem)->fp);
+          list_remove(e);
+      }
+  file_sema_up();
+
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
@@ -211,14 +223,6 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
-      file_sema_down();
-      if(thread_current()->self != NULL)
-        file_close(thread_current()->self);
-      for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
-          file_close(list_entry(e,struct file_search,elem)->fp);
-          list_remove(e);
-      }
-      file_sema_up();
       printf ("%s: exit(%d)\n", cur->name,cur->record);
     }
   printf("exit end\n");
@@ -331,7 +335,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  //add
+ printf("%s\n",file_name);
+ file = filesys_open (file_name);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -350,9 +356,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: error loading executable\n", file_name);
       goto done; 
     }
-  
-  file_deny_write(file);
-  thread_current()->self = file;
 
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
@@ -421,6 +424,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
+
+  file_deny_write(file);
+  thread_current()->self = file;
+
 
  done:
   /* We arrive here whether the load is successful or not. */

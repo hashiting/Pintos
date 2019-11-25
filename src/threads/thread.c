@@ -93,7 +93,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  sema_init(&file_sema,1);
+  lock_init (&file_sema);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -102,12 +102,12 @@ thread_init (void)
   initial_thread->tid = allocate_tid ();
 }
 
-inline void file_sema_up(void){
-  sema_down(&file_sema);
+inline void file_sema_down(void){
+  lock_acquire(&file_sema);
 }
 
-inline void file_sema_down(void){
-  sema_up(&file_sema);
+inline void file_sema_up(void){
+  lock_release(&file_sema);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.

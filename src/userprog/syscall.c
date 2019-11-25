@@ -88,7 +88,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_WAIT:
       check_address(stack_pointer+1);
-      f->eax = process_wait((char*)*(stack_pointer+1));//pass tid of process to do
+      f->eax = process_wait(*(stack_pointer+1));//pass tid of process to do
       break;
 
     case SYS_EXEC:

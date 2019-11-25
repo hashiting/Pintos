@@ -199,7 +199,7 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  printf("exit begin\n");
+  //printf("exit begin\n");
   pd = cur->pagedir;
 
   file_sema_down();

@@ -34,7 +34,7 @@ void check_address(void *p){
 
 struct file* fd2fp(int fd){
   for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
-        printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
+        //printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
         if(list_entry(e,struct file_search,elem)->fd == fd){
           return list_entry(e,struct file_search,elem)->fp;
         }

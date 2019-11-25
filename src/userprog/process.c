@@ -34,6 +34,7 @@ process_execute (const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
+  printf("process_execute begin\n");
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
@@ -55,6 +56,7 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy);
   if(!thread_current()->success)
     return -1;
+  printf("process_execute end\n");
   return tid;
 }
 
@@ -63,6 +65,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+  printf("start process begin\n");
   char *file_name = file_name_;
   char *file_copy = malloc(strlen(file_name)+1);
   strlcpy(file_copy,file_name,strlen(file_name)+1);
@@ -72,7 +75,7 @@ start_process (void *file_name_)
   char *save_ptr;
   char *real_file_name;
   real_file_name = strtok_r(file_name, " ", &save_ptr);
-  //printf("%s\n\n",file_copy);
+  printf("%s\n\n",real_file_name);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -82,7 +85,7 @@ start_process (void *file_name_)
   success = load (real_file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  //printf("test\n");
+  printf("test\n");
   if (!success){
     thread_current()->parent->success = false;
     sema_up(&thread_current()->parent->child_lock);
@@ -94,7 +97,7 @@ start_process (void *file_name_)
     char *arg_token = strtok_r(file_copy, " ", &save_ptr);
     for(int i = 0;arg_token != NULL; arg_token =strtok_r(NULL, " ", &save_ptr),i++){
       number++;
-      //printf("%s\n",arg_token);
+      printf("%s\n",arg_token);
       //printf("%d\n",(int)if_.esp);
       if_.esp-=(strlen(arg_token)+1);
       memcpy(if_.esp,arg_token,strlen(arg_token)+1);
@@ -127,7 +130,7 @@ start_process (void *file_name_)
 
     thread_current()->parent->success = true;
     sema_up(&thread_current()->parent->child_lock);
-    free(arg);
+    //free(arg);
   }
     
 
@@ -142,6 +145,7 @@ start_process (void *file_name_)
 
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
+  printf("start process end\n");
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -156,10 +160,11 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  printf("process wait begin\n");
   struct list_elem *element;
   struct child *child_thread = NULL;
   struct list_elem *element_1 = NULL;
-
+  printf("test1\n");
   // FOR EVERY ELEMENT IN THE LIST...
   for (element = list_begin (&thread_current()->childs); element != list_end (&thread_current()->childs); element = list_next (element))
   {
@@ -171,22 +176,27 @@ process_wait (tid_t child_tid UNUSED)
       element_1 = element;
     }
   }
+  printf("test2\n");
 
 
   // IF NEITHER IS SUCCESSFUL RETURN ERROR
   if(!child_thread || !element_1)
     return -1;
 
+  printf("test3\n");
   thread_current()->wait_tid = child_thread->tid;
     
   // IF THE CHILD HASN'T BEEN USED LOCK THE CHILD_LOCK
-  if(!child_thread->used)
+  if(!child_thread->used){
     sema_down(&thread_current()->child_lock);
+  }
+    
 
+  printf("test4\n");
   // REMOVE THE TEMP ELEMENT FROM THE LIST
   int temp = child_thread->record;
   list_remove(element_1);
-  
+  printf("process wait end\n");
   return temp;
 }
 
@@ -194,17 +204,18 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (void)
 {
+  printf("process exit begin\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  //printf("exit begin\n");
+  printf("exit begin\n");
   pd = cur->pagedir;
 
   file_sema_down();
       if(thread_current()->self != NULL)
-        file_close(thread_current()->self);
+          file_close(thread_current()->self);
       for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
           file_close(list_entry(e,struct file_search,elem)->fp);
           list_remove(e);
@@ -223,7 +234,7 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
-      printf ("%s: exit(%d)\n", cur->name,cur->record);
+      printf("%s: exit(%d)\n", cur->name,cur->record);
     }
   printf("exit end\n");
 }

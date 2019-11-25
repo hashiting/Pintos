@@ -58,13 +58,10 @@ void exit_process(int record)
       f->record = record;
     }
   }
-
-
   thread_current()->record = record;
-
-  if(thread_current()->parent->wait_tid == thread_current()->tid)
+  if(thread_current()->parent->wait_tid == thread_current()->tid){
     sema_up(&thread_current()->parent->child_lock);
-
+  }
   // EXIT THE PROGRAM
   thread_exit();
 }

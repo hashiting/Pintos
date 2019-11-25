@@ -102,11 +102,11 @@ thread_init (void)
   initial_thread->tid = allocate_tid ();
 }
 
-inline void file_sema_down(void){
+void file_sema_down(void){
   lock_acquire(&file_sema);
 }
 
-inline void file_sema_up(void){
+void file_sema_up(void){
   lock_release(&file_sema);
 }
 
@@ -192,11 +192,13 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
   struct child* c = malloc(sizeof(*c));
   c->tid = tid;
   c->record = t->record;
   c->used = false;
   list_push_back (&running_thread()->childs, &c->elem);
+  
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -497,11 +499,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   t->time_block_left = 0;
-  t->increase_file_id_generate = 3;
+  t->increase_file_id_generate = 2;
   t->record = 0;
   list_init (&t->childs);
   t->parent = running_thread();
-  t->wait_tid = -1;
+  t->wait_tid = 0;
   t->self = NULL;
   list_init (&t->files);
   sema_init(&t->child_lock, 0);

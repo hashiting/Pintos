@@ -101,15 +101,17 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
     int record;                         //exit code
     struct thread* parent;
     struct list childs;
-    struct semaphore child_lock;
     struct list files;                     //file list
     int increase_file_id_generate;        //generate unique id for file
     bool success;
     struct file *self;
     int wait_tid;
+    struct semaphore child_lock;
+    struct child_info * child;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -122,11 +124,12 @@ struct file_search{
   struct list_elem elem;
 };
 
-struct child {
-      int tid;
-      struct list_elem elem;
-      int record;
-      bool used;
+struct child_info{
+    tid_t tid;
+    int record;
+    struct list_elem elem;
+    struct semaphore sema;
+    bool bewaited;
 };
 
 void file_sema_up(void);

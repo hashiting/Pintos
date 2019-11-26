@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -193,11 +194,12 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-  struct child* c = malloc(sizeof(*c));
-  c->tid = tid;
-  c->record = t->record;
-  c->used = false;
-  list_push_back (&running_thread()->childs, &c->elem);
+  t->child = malloc(sizeof(struct child_info));
+  t->child->tid=tid;
+  t->child->record=0;
+  t->child->bewaited = false;
+  sema_init(&t->child->sema,0);
+  list_push_back (&thread_current()->childs, &t->child->elem);
   
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -323,7 +325,8 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-
+  
+  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -502,11 +505,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->increase_file_id_generate = 2;
   t->record = 0;
   list_init (&t->childs);
-  t->parent = running_thread();
+  sema_init(&t->child_lock,0);
+  t->parent = running_thread();//?
   t->wait_tid = 0;
   t->self = NULL;
   list_init (&t->files);
-  sema_init(&t->child_lock, 0);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

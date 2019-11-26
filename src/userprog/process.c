@@ -34,7 +34,7 @@ process_execute (const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  printf("process_execute begin\n");
+  //printf("process_execute begin\n");
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
@@ -51,12 +51,17 @@ process_execute (const char *file_name)
   //printf("%s\n\n",real_file_name);
   tid = thread_create (real_file_name, PRI_DEFAULT, start_process, fn_copy);
   free(real_file_name);
-  sema_down(&thread_current()->child_lock);
-  if (tid == TID_ERROR)
+
+  if (tid == TID_ERROR){
     palloc_free_page (fn_copy);
+    return tid;
+  }
+  
+  sema_down(&thread_current()->child_lock);
   if(!thread_current()->success)
     return -1;
-  printf("process_execute end\n");
+
+  //printf("process_execute end\n");
   return tid;
 }
 
@@ -65,7 +70,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
-  printf("start process begin\n");
+  //printf("start process begin\n");
   char *file_name = file_name_;
   char *file_copy = malloc(strlen(file_name)+1);
   strlcpy(file_copy,file_name,strlen(file_name)+1);
@@ -75,7 +80,7 @@ start_process (void *file_name_)
   char *save_ptr;
   char *real_file_name;
   real_file_name = strtok_r(file_name, " ", &save_ptr);
-  printf("%s\n\n",real_file_name);
+  //printf("%s\n\n",real_file_name);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -85,11 +90,11 @@ start_process (void *file_name_)
   success = load (real_file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  printf("test\n");
+  //printf("test\n");
   if (!success){
     thread_current()->parent->success = false;
     sema_up(&thread_current()->parent->child_lock);
-    thread_exit ();
+    unexpected_exit ();
   }
   else{
     int number = 0;
@@ -97,7 +102,7 @@ start_process (void *file_name_)
     char *arg_token = strtok_r(file_copy, " ", &save_ptr);
     for(int i = 0;arg_token != NULL; arg_token =strtok_r(NULL, " ", &save_ptr),i++){
       number++;
-      printf("%s\n",arg_token);
+      //printf("%s\n",arg_token);
       //printf("%d\n",(int)if_.esp);
       if_.esp-=(strlen(arg_token)+1);
       memcpy(if_.esp,arg_token,strlen(arg_token)+1);
@@ -145,7 +150,7 @@ start_process (void *file_name_)
 
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
-  printf("start process end\n");
+  //printf("start process end\n");
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -160,67 +165,54 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  printf("process wait begin\n");
-  struct list_elem *element;
-  struct child *child_thread = NULL;
-  struct list_elem *element_1 = NULL;
-  printf("test1\n");
-  // FOR EVERY ELEMENT IN THE LIST...
-  for (element = list_begin (&thread_current()->childs); element != list_end (&thread_current()->childs); element = list_next (element))
+  //printf("process wait begin\n");
+  struct list_elem *e;
+  struct child_info *kid;
+
+  //find kid
+  for (e = list_begin (&thread_current()->childs); e != list_end (&thread_current()->childs); e = list_next (e))
   {
-    // CREATE A TEMP CHILD OBJECT AND IF IT'S TID == CHILD'S TID MAKE IT THE FIRST ELEMENT
-    struct child *temp_child = list_entry (element, struct child, elem);
-    if(temp_child->tid == child_tid)
-    {
-      child_thread = temp_child;
-      element_1 = element;
+    kid = list_entry (e, struct child_info, elem);
+
+    if(kid->tid == child_tid){
+
+      if (!kid->bewaited){
+        
+        kid->bewaited = true;
+        sema_down(&kid->sema);
+        break;
+      } 
+      else{
+        return -1;
+      } 
+      
     }
   }
-  printf("test2\n");
-
-
-  // IF NEITHER IS SUCCESSFUL RETURN ERROR
-  if(!child_thread || !element_1)
+  if (e == list_end(&thread_current()->childs)) 
     return -1;
 
-  printf("test3\n");
-  thread_current()->wait_tid = child_thread->tid;
-    
-  // IF THE CHILD HASN'T BEEN USED LOCK THE CHILD_LOCK
-  if(!child_thread->used){
-    sema_down(&thread_current()->child_lock);
-  }
-    
+  //等到孩子退出后, 读取退出状态， 移走孩子元素并释放
+  int record = kid->record;
+  list_remove(e);
 
-  printf("test4\n");
-  // REMOVE THE TEMP ELEMENT FROM THE LIST
-  int temp = child_thread->record;
-  list_remove(element_1);
-  printf("process wait end\n");
-  return temp;
+  free(kid);
+
+  return record;
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
-  printf("process exit begin\n");
+  //printf("process exit begin\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  printf("exit begin\n");
+  //printf("exit begin\n");
   pd = cur->pagedir;
 
-  file_sema_down();
-      if(thread_current()->self != NULL)
-          file_close(thread_current()->self);
-      for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
-          file_close(list_entry(e,struct file_search,elem)->fp);
-          list_remove(e);
-      }
-  file_sema_up();
 
   if (pd != NULL) 
     {
@@ -234,9 +226,8 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
-      printf("%s: exit(%d)\n", cur->name,cur->record);
     }
-  printf("exit end\n");
+  //printf("exit end\n");
 }
 
 /* Sets up the CPU for running user code in the current
@@ -347,7 +338,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   //add
- printf("%s\n",file_name);
  file = filesys_open (file_name);
   if (file == NULL) 
     {

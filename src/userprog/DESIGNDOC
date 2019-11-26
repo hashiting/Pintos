@@ -1,5 +1,4 @@
 Exit code:
-    implement in process_exit();
     if is user process, print.
 
 Argument passing:
@@ -81,6 +80,35 @@ we consult from https://github.com/Waqee/Pintos-Project-2 solving waiting and ex
 			   ================
 
 ---- DATA STRUCTURES ----
+no
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+Fisrt step is to tokenize the commands and push the name of process and all the arguments into stack.Then we do alignment so stack%4 == 0 and pad a zero. 
+Then we put the address of arg in reverse order. Finall we put the number of argument and return 0.
+We don't do special operation to avoid overflowing when push the argument because kernel handle it in page fault in exception. When we access system call, we will check if the address is valid.
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+I guess the reason is that we need to keep save_ptr so we can visit the address of arguments.
+
+>> A4: In Pintos, the kernel separates commands into a executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+1. load executable file before pushing arguments into stack, no need to roll back if load fail.
+2. It will be more safe and flexible if you run you program in shell.
+
+			     SYSTEM CALLS
+			     ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
 add element in 
 struct thread{
     int record;                         //exit code
@@ -110,40 +138,21 @@ struct child_info{
     bool waited;                          //make sure only wait once
 };
 
----- ALGORITHMS ----
-
->> A2: Briefly describe how you implemented argument parsing.  How do
->> you arrange for the elements of argv[] to be in the right order?
->> How do you avoid overflowing the stack page?
-
-Fisrt step is to tokenize the commands and push the 
-We don't do special operation to avoid overflowing because kernel handle it in page fault in exception.
----- RATIONALE ----
-
->> A3: Why does Pintos implement strtok_r() but not strtok()?
-I guess the reason is that we need to keep save_ptr so we can visit the address.
-
->> A4: In Pintos, the kernel separates commands into a executable name
->> and arguments.  In Unix-like systems, the shell does this
->> separation.  Identify at least two advantages of the Unix approach.
-
-			     SYSTEM CALLS
-			     ============
-
----- DATA STRUCTURES ----
-
->> B1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
->> enumeration.  Identify the purpose of each in 25 words or less.
+struct lock file_sema;                 //sync file operation
 
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+fd is only unique within a single process, and is contained in the file list of a single process.
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+        1.check if the address in stack is valid, if no, f->eax = -1;
+        2.get fd,buffer and size from stack;
+        3.convert fd to file pointer; we can check the file list in current thread, and use the fd to get the file pointer.
+        4.call file read/write.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -151,9 +160,18 @@ I guess the reason is that we need to keep save_ptr so we can visit the address.
 >> (e.g. calls to pagedir_get_page()) that might result?  What about
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
+Same for full page and 2 bytes:
+least number should be 1 because it is enough to access the head of the page.
+great number may be 2? to check the if head and end are valid adressI guess because the memory is continued?
+
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+we create a child list in parent's thread struct.The child will be add into the list when it is created.
+in process_wait, parent thread get the tid of the child who need to be wait. So, parent thread will check into its own child list to see if this tid is inside or not.
+If not, return -1, if yes, check if this child has been waited or not because it can only be waited once.If has been waited, return -1.
+else parent thread sema_down(child->sema),and when child finish execute and exit, it will sema_up(child->sema) to wake up the parent thread. After parent wake up, it return the 
+exit code of child thread and remove the child from the list.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -187,12 +205,16 @@ I guess the reason is that we need to keep save_ptr so we can visit the address.
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
+Before we use the address, we use check_address to validate the address. check if this is user addr and see if we can access the address in own pagedir.
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+Advantages is that fd help to access and find the file and manipulate the file.
+Disadvantages is that it cost overhead in space.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+no change.
 
 			   SURVEY QUESTIONS
 			   ================

@@ -35,10 +35,11 @@ void exit_(){
   file_sema_up();
   //close all
   for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
+      struct file_search* temp = list_entry(e,struct file_search,elem);
       file_sema_down();
       file_close (list_entry(e,struct file_search,elem)->fp);
       file_sema_up();
-      list_remove(e);
+      list_remove(e);// no pass muti-oom
   }
   thread_exit();
 }
@@ -231,5 +232,5 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
   }
   //printf ("system call!\n");
-  //thread_exit ();
+  //thread_exit ();//........big bug here!!!!!!!!!!!!!!!!!!
 }

@@ -109,7 +109,6 @@ struct thread
     int increase_file_id_generate;        //generate unique id for file
     bool success;
     struct file *self;
-    int wait_tid;
     struct semaphore child_lock;
     struct child_info * child;
   };

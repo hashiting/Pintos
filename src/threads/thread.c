@@ -319,14 +319,14 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
+  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  
-  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
+  //printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -507,7 +507,6 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->childs);
   sema_init(&t->child_lock,0);
   t->parent = running_thread();
-  t->wait_tid = 0;
   t->self = NULL;
   list_init (&t->files);
 

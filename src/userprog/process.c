@@ -94,50 +94,48 @@ start_process (void *file_name_)
   if (!success){
     thread_current()->parent->success = false;
     sema_up(&thread_current()->parent->child_lock);
-    error_exit ();
+    error_exit ();//fail 
   }
   else{
     int number = 0;
     int arg[128];
+
     char *arg_token = strtok_r(file_copy, " ", &save_ptr);
     for(int i = 0;arg_token != NULL; arg_token =strtok_r(NULL, " ", &save_ptr),i++){
       number++;
       //printf("%s\n",arg_token);
       //printf("%d\n",(int)if_.esp);
       if_.esp-=(strlen(arg_token)+1);
-      memcpy(if_.esp,arg_token,strlen(arg_token)+1);
+      memcpy(if_.esp, arg_token, strlen(arg_token)+1);
       arg[i] = (int)if_.esp;
     }
 
-    while((int)if_.esp%4!=0){
+    while((int)if_.esp%4!=0){//alignment
       if_.esp--;
     }
 
+    int zero = 0;
+    if_.esp -= 4;
+    memcpy(if_.esp, &zero, sizeof(int));//pad zero
 
-    int zero=0;
-    if_.esp-=4;
-    memcpy(if_.esp,&zero, sizeof(int));
-
-    for(int i=number-1; i>=0; i--){
-      if_.esp-=4;
-      memcpy(if_.esp,&arg[i],sizeof(int));
+    for(int i = number-1;i >= 0;i--){
+      if_.esp -= 4;
+      memcpy(if_.esp, &arg[i], sizeof(int));//arg
     }
+   
+    memcpy(if_.esp-4, &if_.esp, sizeof(int));//arg0
+    if_.esp -= 4;
+    if_.esp -= 4;
+    memcpy(if_.esp, &number, sizeof(int));//number
 
-    int arg0=(int)if_.esp;
-    if_.esp-=4;
-    memcpy(if_.esp,&arg0,sizeof(int));
-
-    if_.esp-=4;
-    memcpy(if_.esp,&number,sizeof(int));
-
-    if_.esp-=4;
-    memcpy(if_.esp,&zero,sizeof(int));
+    if_.esp -= 4;
+    memcpy(if_.esp, &zero, sizeof(int));//return
 
     thread_current()->parent->success = true;
-    sema_up(&thread_current()->parent->child_lock);
     //free(arg);
   }
-    
+  
+  sema_up(&thread_current()->parent->child_lock);
 
   //printf("test\n\n");
   /* Start the user process by simulating a return from an
@@ -169,32 +167,26 @@ process_wait (tid_t child_tid UNUSED)
   struct list_elem *e;
   struct child_info *kid;
 
-  //find kid
-  for (e = list_begin (&thread_current()->childs); e != list_end (&thread_current()->childs); e = list_next (e))
-  {
+  //find kid and set wait
+  for (e = list_begin (&thread_current()->childs); e != list_end (&thread_current()->childs); e = list_next (e)){
     kid = list_entry (e, struct child_info, elem);
-
-    if(kid->tid == child_tid){
-
+    if(kid->tid == child_tid){ // find
       if (!kid->waited){
-        
         kid->waited = true;
         sema_down(&kid->sema);
         break;
       } 
       else{
-        return -1;
+        return -1; // wait once
       } 
       
     }
   }
-  if (e == list_end(&thread_current()->childs)) 
+  if (e == list_end(&thread_current()->childs)){ //no find
     return -1;
-
-  //等到孩子退出后, 读取退出状态， 移走孩子元素并释放
-  int record = kid->record;
+  } 
+  int record = kid->record;//remove and free when kid end and parent continue
   list_remove(e);
-
   free(kid);
 
   return record;

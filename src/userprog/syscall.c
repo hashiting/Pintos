@@ -27,8 +27,8 @@ void check_address(void *p){
 }
 
 void exit_(){
-  thread_current()->child->record=thread_current()->record;
-  sema_up(&thread_current()->child->sema);
+  thread_current()->self_->record=thread_current()->record;
+  sema_up(&thread_current()->self_->sema);
   //close self
   file_sema_down();
   file_close (thread_current()->self);

@@ -64,7 +64,7 @@ System call:
 >> Fill in the names, email addresses and matriculation numbers of your group members.
 
 Pengqiu Li <leepengqiu@gmail.com> 2575746
-Yu Xiao <email@domain.example> 9999999
+Yu Xiao <s8xiyuuu@stud.uni-saarland.de> 2576690
 
 ---- PRELIMINARIES ----
 
@@ -74,7 +74,7 @@ Yu Xiao <email@domain.example> 9999999
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course staff.
-we consult from https://github.com/Waqee/Pintos-Project-2 solving waiting and exeu.
+we consult from https://github.com/Waqee/Pintos-Project-2 solving waiting and exec.
 
 			   ARGUMENT PASSING
 			   ================
@@ -113,32 +113,32 @@ add element in
 struct thread{
     int record;                         //exit code
     struct thread* parent;              //parent thread
-    struct list childs;                    //all child thread
-    struct list files;                     //file list
-    int increase_file_id_generate;        //generate unique id for file
-    bool success;                         //load success or not
-    struct file *self;                      //executable file                           
-    struct semaphore child_lock;            //sync in load
-    struct child_info * child;              //child pointer
+    struct list childs;                 //all child thread
+    struct list files;                  //file list
+    int increase_file_id_generate;      //generate unique id for file
+    bool success;                       //load success or not
+    struct file *self;                  //executable file                           
+    struct semaphore child_lock;        //sync in load
+    struct self_info * self_;           //child pointer
 }
 
 //add file to thread files list
 struct file_search{
-  struct file* fp;                          //file point
-  int fd;                                   //file descriptors
+  struct file* fp;                      //file point
+  int fd;                               //file descriptors
   struct list_elem elem;
 };
 
-//add child information to child list
-struct child_info{
-    tid_t tid;                               //check wait tid
-    int record;                             //return code
+//add information of created thread to child list of parent thread
+struct self_info{
+    tid_t tid;                          //check wait tid
+    int record;                         //return code
     struct list_elem elem;                  
-    struct semaphore sema;                 //sysn in wait
-    bool waited;                          //make sure only wait once
+    struct semaphore sema;              //synch in wait
+    bool waited;                        //make sure only wait once
 };
 
-struct lock file_sema;                 //sync file operation
+struct lock file_sema;                  //synch file operation
 
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
@@ -186,13 +186,17 @@ exit code of child thread and remove the child from the list.
 >> allocated resources (locks, buffers, etc.) are freed?  In a few
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
+At the beginning of implementation of syscall, check of pointer validity is necessary. If it is a null pointer, or it cannot map successfully to the page directory of current thread, then it is an invalid pointer. 
+Concerning to freeing allocation issues, the strategy we apply is quite staight forward. Any time after you allocate some temporary resources, by the time you do not need it, then free it immediately. And we implemente freeing file resources in SYS_EXIT.
 
----- SYNCHRONIZATION ----
+
+---- SYNCHRONIZATION ----created thread
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+Using load function. And store the return value of it. Use $eax to store the new thread id which would execute the file, or TID_ERROR if it fails.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -200,6 +204,15 @@ exit code of child thread and remove the child from the list.
 >> that all resources are freed in each case?  How about when P
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
+Parent process contains a child_list.
+if P calls wait(C) before C exits:
+    since C in child_list of P, P waits C and returns its exit status 
+if P calls wait(C) after C exits:
+    C is not in child_list, P directly returns its exit status
+When child exits, SYS_EXIT is called, and resources are freed.    
+if P terminates without waiting:
+    C has no longer parent P, then it will not call V() operation on parent process.
+
 
 ---- RATIONALE ----
 

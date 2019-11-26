@@ -176,9 +176,9 @@ process_wait (tid_t child_tid UNUSED)
 
     if(kid->tid == child_tid){
 
-      if (!kid->bewaited){
+      if (!kid->waited){
         
-        kid->bewaited = true;
+        kid->waited = true;
         sema_down(&kid->sema);
         break;
       } 

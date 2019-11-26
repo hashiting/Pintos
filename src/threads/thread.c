@@ -197,7 +197,7 @@ thread_create (const char *name, int priority,
   t->child = malloc(sizeof(struct child_info));
   t->child->tid=tid;
   t->child->record=0;
-  t->child->bewaited = false;
+  t->child->waited = false;
   sema_init(&t->child->sema,0);
   list_push_back (&thread_current()->childs, &t->child->elem);
   
@@ -506,7 +506,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->record = 0;
   list_init (&t->childs);
   sema_init(&t->child_lock,0);
-  t->parent = running_thread();//?
+  t->parent = running_thread();
   t->wait_tid = 0;
   t->self = NULL;
   list_init (&t->files);

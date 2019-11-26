@@ -129,7 +129,7 @@ struct child_info{
     int record;
     struct list_elem elem;
     struct semaphore sema;
-    bool bewaited;
+    bool waited;
 };
 
 void file_sema_up(void);

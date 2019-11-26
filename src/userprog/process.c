@@ -94,7 +94,7 @@ start_process (void *file_name_)
   if (!success){
     thread_current()->parent->success = false;
     sema_up(&thread_current()->parent->child_lock);
-    unexpected_exit ();
+    error_exit ();
   }
   else{
     int number = 0;

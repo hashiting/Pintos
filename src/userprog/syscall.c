@@ -27,6 +27,7 @@ void check_address(void *p){
 }
 
 void exit_(){
+  //wake parent
   thread_current()->self_->record=thread_current()->record;
   sema_up(&thread_current()->self_->sema);
   //close self
@@ -34,12 +35,16 @@ void exit_(){
   file_close (thread_current()->self);
   file_sema_up();
   //close all
-  for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
-      struct file_search* temp = list_entry(e,struct file_search,elem);
-      file_sema_down();
-      file_close (list_entry(e,struct file_search,elem)->fp);
-      file_sema_up();
-      list_remove(e);// no pass muti-oom
+  struct list_elem *e;
+  for (struct list *files = &thread_current()->files; !list_empty(files);)
+  {
+    e = list_pop_front(files);
+    struct file_search *f = list_entry (e, struct file_search, elem);
+    file_sema_down();
+    file_close(f->fp);
+    file_sema_up();
+    list_remove(e);
+    free(f);
   }
   thread_exit();
 }

@@ -105,11 +105,11 @@ struct thread
     int record;                         //exit code
     struct thread* parent;
     struct list childs;
-    struct list files;                     //file list
-    int increase_file_id_generate;        //generate unique id for file
-    bool success;
+    struct list files;                  //file list
+    int increase_file_id_generate;      //generate unique id for file
+    bool success;                       // check whether load has succeeded
     struct file *self;
-    struct semaphore child_lock;
+    struct semaphore child_lock;        // sema for load sync
     struct self_info * self_;
   };
 

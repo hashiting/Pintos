@@ -111,6 +111,10 @@ struct thread
     struct file *self;
     struct semaphore child_lock;        // sema for load sync
     struct self_info * self_;
+
+    //pro3
+    struct Supplemental_page_table* spt;//
+    struct list mmaps;//mmp
   };
 
 /* If false (default), use round-robin scheduler.

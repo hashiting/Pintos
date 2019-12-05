@@ -64,6 +64,27 @@ struct file* fd2fp(int fd){
   return NULL;
 }
 
+mapid_t mmap(int fd, void *upage){
+  if(fd <= 1){
+    return -1;
+  }
+
+  file_sema_down();
+  struct file* temp_file = file_reopen(fd2fp(fd));
+  if(temp_file != NULL){
+    off_t len = file_length(temp_file);
+    for(int i = 0;i < len;i += 4096){
+      void *temp = upage + i;
+      //spp table check. not done
+    }
+
+  }
+  else{
+    file_sema_up();
+    return -1;
+  }
+}
+
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
@@ -231,6 +252,19 @@ syscall_handler (struct intr_frame *f UNUSED)
         f->eax = -1;
       }
       break;
+
+    case SYS_MMAP:
+      check_address(stack_pointer+1);//fd
+      check_address(stack_pointer+2);//*address
+      check_address(*(stack_pointer+2));
+      //
+
+    break;
+
+    case SYS_MUNMAP:
+      check_address(stack_pointer+1);//mmapid_t
+
+    break;
 
     default:
       error_exit();

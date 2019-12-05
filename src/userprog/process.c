@@ -165,11 +165,11 @@ process_wait (tid_t child_tid UNUSED)
 {
   //printf("process wait begin\n");
   struct list_elem *e;
-  struct child_info *kid;
+  struct self_info *kid;
 
   //find kid and set wait
   for (e = list_begin (&thread_current()->childs); e != list_end (&thread_current()->childs); e = list_next (e)){
-    kid = list_entry (e, struct child_info, elem);
+    kid = list_entry (e, struct self_info, elem);
     if(kid->tid == child_tid){ // find
       if (!kid->waited){
         kid->waited = true;

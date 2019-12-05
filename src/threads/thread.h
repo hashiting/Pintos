@@ -105,12 +105,12 @@ struct thread
     int record;                         //exit code
     struct thread* parent;
     struct list childs;
-    struct list files;                     //file list
-    int increase_file_id_generate;        //generate unique id for file
-    bool success;
+    struct list files;                  //file list
+    int increase_file_id_generate;      //generate unique id for file
+    bool success;                       // check whether load has succeeded
     struct file *self;
-    struct semaphore child_lock;
-    struct child_info * child;
+    struct semaphore child_lock;        // sema for load sync
+    struct self_info * self_;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -123,7 +123,7 @@ struct file_search{
   struct list_elem elem;
 };
 
-struct child_info{
+struct self_info{
     tid_t tid;
     int record;
     struct list_elem elem;

@@ -194,12 +194,12 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-  t->child = malloc(sizeof(struct child_info));
-  t->child->tid=tid;
-  t->child->record=0;
-  t->child->waited = false;
-  sema_init(&t->child->sema,0);
-  list_push_back (&thread_current()->childs, &t->child->elem);
+  t->self_ = malloc(sizeof(struct self_info));
+  t->self_->tid=tid;
+  t->self_->record=0;
+  t->self_->waited = false;
+  sema_init(&t->self_->sema,0);
+  list_push_back (&thread_current()->childs, &t->self_->elem);
   
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);

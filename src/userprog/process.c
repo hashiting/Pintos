@@ -98,7 +98,7 @@ start_process (void *file_name_)
   }
   else{
     int number = 0;
-    int arg[128];
+    int arg[64];
 
     char *arg_token = strtok_r(file_copy, " ", &save_ptr);
     for(int i = 0;arg_token != NULL; arg_token =strtok_r(NULL, " ", &save_ptr),i++){

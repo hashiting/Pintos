@@ -1,6 +1,7 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 #include "vm/swap.h"
+#include "userprog/pagedir.h"
 
 unsigned hash_hash_func(const struct hash_elem *e, void *aux){
     return hash_bytes(&hash_entry(e, struct frame_entry, helem)->kernel_adress, sizeof(hash_entry(e, struct frame_entry, helem)->kernel_adress));//set psy adress as key
@@ -15,9 +16,55 @@ void frame_init(){
     list_init(&frame_list);
     hash_init(&frame_table,hash_hash_func,hash_less_func,NULL);
 }
+struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int evict){
+    struct frame_entry* temp = malloc(sizeof(struct frame_entry));
+    temp->t = thread_current();
+    temp->user_adress = user_adress;
+    temp->kernel_adress = kernel_address;
+    temp->evict_num = evict;
+    return temp;
+}
 
-uint8_t* frame_allo(enum palloc_flags flags,void* user_adress){
+struct frame_entry* frame_allo(enum palloc_flags flags,void* user_adress){
     lock_acquire(&frame_lock);
+    void *kernel_adress = palloc_get_page(PAL_USER | flags);//get page
+    if(kernel_adress != NULL){
+        struct frame_entry* entity = frame_entity_init(user_adress,kernel_adress,0);
+        hash_insert(&frame_table, &entity->helem);
+        list_push_back(&frame_list, &entity->lelem);
+        lock_release(&frame_lock);
+        return entity;
+    }
+    else{
+        //to do // swap someone
+        struct frame_entry *evict = frame_clock(thread_current()->pagedir);
+        pagedir_clear_page(evict->t->pagedir, evict->user_adress);
+        //to do
+        lock_release(&frame_lock);
+        return NULL;
+    }
+}
 
-    lock_release(&frame_lock);
+void frame_remove(struct frame_entry* entity){
+    hash_delete(&frame_table,&entity->helem);
+    list_remove(&entity->lelem);
+}
+void frame_free(struct frame_entry* entity){
+    frame_remove(entity);
+    palloc_free_page(entity->kernel_adress);
+    free(entity);
+}
+
+//swap
+struct frame_entry* frame_clock(uint32_t *pagedir){
+    for(struct frame_entry* temp = list_begin (&frame_list);temp != list_end(&frame_list);temp = list_next(temp)){
+        if(temp->evict_num != 0){
+            if(!pagedir_is_accessed(pagedir, temp->kernel_adress)){
+                return temp;
+            }
+            else{
+                pagedir_set_accessed(pagedir, temp->kernel_adress, false);
+            }
+        }
+    }
 }

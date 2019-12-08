@@ -20,8 +20,11 @@ struct frame_entry{
 };
 
 void frame_init();
-uint8_t* frame_allo(enum palloc_flags flags,void* user_adress);
+struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int evict);
+struct frame_entry* frame_allo(enum palloc_flags flags,void* user_adress);
 unsigned hash_hash_func(const struct hash_elem *e , void *aux);
 bool hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *aux);
-
+void frame_remove(struct frame_entry* entity);
+void frame_free(struct frame_entry* entity);
+struct frame_entry* frame_clock(uint32_t *pagedir);
 #endif

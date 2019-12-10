@@ -9,11 +9,9 @@
 enum page_status{
     FRAME,
     SWAP,
-    NOUSE,
+    NEW,
     FILE
 };
-
-struct hash Page_table;
 
 struct page_entry{
     void *user_adress;
@@ -21,12 +19,24 @@ struct page_entry{
     enum page_status status;
 
     bool dirty;
+    int swap_index;
     struct hash_elem helem;
     struct file* file;
     int read_bytes;
     int zero_bytes;
-}
+};
 
+struct hash* page_init();//by thread
+unsigned p_hash_hash_func(const struct hash_elem *e , void *aux);
+bool p_hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *aux);
+
+struct page_entry* set_page_entry(void* user_adress, void* kernel_address,enum page_status s,bool dirty,int swap_index);
+struct page_entry* get_page_entry(struct hash *h,void *user_adress);
+
+bool Install_page_in_frame(struct hash* h,void *user_adress, void *kernel_adress,int swap_index);
+bool Install_new_page(struct hash* h,void *user_adress);
+
+bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress);
 
 
 #endif

@@ -113,7 +113,7 @@ struct thread
     struct self_info * self_;
 
     //pro3
-    struct Supplemental_page_table* spt;//
+    struct hash* page_table;//
     struct list mmaps;//mmp
   };
 

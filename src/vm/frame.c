@@ -16,12 +16,14 @@ void frame_init(){
     list_init(&frame_list);
     hash_init(&frame_table,f_hash_hash_func,f_hash_less_func,NULL);
 }
-struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int evict){
+
+//call this function in init.c as frame is global
+struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int pin){
     struct frame_entry* temp = malloc(sizeof(struct frame_entry));
     temp->t = thread_current();
     temp->user_adress = user_adress;
     temp->kernel_adress = kernel_address;
-    temp->evict_num = evict;
+    temp->pin = pin;
     return temp;
 }
 
@@ -45,6 +47,7 @@ struct frame_entry* frame_allo(enum palloc_flags flags,void* user_adress){
     }
 }
 
+//run kad2fe before this two function
 void frame_remove(struct frame_entry* entity){
     hash_delete(&frame_table,&entity->helem);
     list_remove(&entity->lelem);
@@ -55,16 +58,43 @@ void frame_free(struct frame_entry* entity){
     free(entity);
 }
 
-//swap
+//swap using clock//run two time
 struct frame_entry* frame_clock(uint32_t *pagedir){
-    for(struct frame_entry* temp = list_begin (&frame_list);temp != list_end(&frame_list);temp = list_next(temp)){
-        if(temp->evict_num != 0){
-            if(!pagedir_is_accessed(pagedir, temp->kernel_adress)){
-                return temp;
-            }
-            else{
-                pagedir_set_accessed(pagedir, temp->kernel_adress, false);
+    for(int i = 0;i < 2;i++){
+        for(struct frame_entry* temp = list_begin (&frame_list);temp != list_end(&frame_list);temp = list_next(temp)){
+            if(temp->pin != 0){
+                if(!pagedir_is_accessed(pagedir, temp->kernel_adress)){
+                    return temp;
+                }
+                else{
+                    pagedir_set_accessed(pagedir, temp->kernel_adress, false);
+                    //return temp;
+                }
             }
         }
     }
+    PANIC("no memory");
+    return NULL; 
+}
+
+//run kad2fe before this two function
+void frame_pin(struct frame_entry* entity){
+    lock_acquire(&frame_lock);
+    entity->pin++;
+    lock_release(&frame_lock);
+}
+void frame_unpin(struct frame_entry* entity){
+    lock_acquire(&frame_lock);
+    entity->pin = 0;
+    lock_release(&frame_lock);
+}
+
+struct frame_entry* kad2fe(void *kernel_adress){
+    struct frame_entry* temp = malloc(sizeof(struct frame_entry));
+    temp->kernel_adress = kernel_adress;
+    struct hash_elem *h = hash_find (&frame_table, &temp->helem);
+    if(h != NULL){
+        return hash_entry(h,struct frame_entry,helem);
+    }
+    return NULL;
 }

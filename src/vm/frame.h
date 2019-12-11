@@ -7,7 +7,7 @@
 
 struct hash frame_table; //psysical add -> fram//global
 struct lock frame_lock;
-struct list frame_list;
+struct list frame_list;//for clock algorithm
 
 struct frame_entry{
     struct hash_elem helem;
@@ -15,7 +15,7 @@ struct frame_entry{
 
     void *user_adress;
     void *kernel_adress;
-    int evict_num;//for replacement
+    int pin;//for replacement//pin == 0 can be replace,because not loaded.
     struct thread *t;
 };
 
@@ -29,4 +29,10 @@ bool f_hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *
 
 void frame_remove(struct frame_entry* entity);
 void frame_free(struct frame_entry* entity);
+
+void frame_pin(struct frame_entry* entity);
+void frame_unpin(struct frame_entry* entity);
+
+//kernel address to frame entry entity
+struct frame_entry* kad2fe(void *kernel_adress);
 #endif

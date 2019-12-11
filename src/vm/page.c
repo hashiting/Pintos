@@ -18,13 +18,12 @@ bool p_hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *
     return hash_entry(a, struct page_entry, helem)->user_adress < hash_entry(b, struct page_entry, helem)->user_adress;
 }
 
-struct page_entry* set_page_entry(void* user_adress, void* kernel_address,enum page_status s,bool dirty,int swap_index){
+struct page_entry* set_page_entry(void* user_adress, void* kernel_address,enum page_status s,int swap){
     struct page_entry* temp = (struct page_entry*)malloc(sizeof(struct page_entry));
     temp->user_adress = user_adress;
     temp->kernel_adress = kernel_address;
     temp->status = s;
-    temp->dirty = dirty;
-    temp->swap_index = swap_index;
+    temp->swap = swap;
     return temp;
 }
 
@@ -39,8 +38,9 @@ struct page_entry* get_page_entry(struct hash *h,void *user_adress){
     return NULL;    
 }
 
-bool Install_page_in_frame(struct hash* h,void *user_adress, void *kernel_adress,int swap_index){
-    struct page_entry* temp = set_page_entry(user_adress,kernel_adress,FRAME,false,-100);
+bool Install_page_in_frame(struct hash* h,void *user_adress, void *kernel_adress,int swap){
+    struct page_entry* temp = set_page_entry(user_adress,kernel_adress,FRAME,-100);
+    temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
     if(helem == NULL){
         return true;
@@ -49,7 +49,8 @@ bool Install_page_in_frame(struct hash* h,void *user_adress, void *kernel_adress
 }
 
 bool Install_new_page(struct hash* h,void *user_adress){
-    struct page_entry* temp = set_page_entry(user_adress,NULL,NEW,false,-100);
+    struct page_entry* temp = set_page_entry(user_adress,NULL,NEW,-100);
+    temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
     if(helem == NULL){
         return true;
@@ -57,12 +58,13 @@ bool Install_new_page(struct hash* h,void *user_adress){
     return false;
 }
 
-void Set_page_swap(){
-
+void Set_page_swap(struct hash *h, void* user_adress,int swap){
+    struct page_entry* temp = get_page_entry(h,user_adress);
+    set_page_entry(user_adress,NULL,SWAP,swap);
 }
 
 bool Install_page_in_file(){
-
+    //to do
 }
 
 bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
@@ -85,6 +87,17 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
         //to do
     }
     
-    //to do
+    //to do//v -> p
+}
+
+void
+page_set_dirty (struct hash* h, void *user_adress, bool dirty) 
+{
+  struct page_entry* temp = get_page_entry(h,user_adress);
+  if (temp != NULL) {
+        if (dirty)
+        temp->dirty |= dirty;
+    }
+    PANIC("error");
 }
 

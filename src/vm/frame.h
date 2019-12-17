@@ -15,7 +15,7 @@ struct frame_entry{
 
     void *user_adress;
     void *kernel_adress;
-    int pin;//for replacement//pin == 0 can be replace,because not loaded.
+    int pin;//for replacement//pin == 0 can not be replace,because not loaded.
     struct thread *t;
 };
 

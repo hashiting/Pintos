@@ -11,7 +11,10 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+
+#ifdef VM
 #include "vm/page.h"
+#endif
 
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -510,9 +513,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = running_thread();
   t->self = NULL;
   list_init (&t->files);
-
+  
+  #ifdef VM
   list_init(&t->mmaps);
-  page_init(t->page_table);
+  t->page_table = page_init();
+  #endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

@@ -78,7 +78,7 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
 
     void* frame = frame_allo(PAL_USER,user_adress)->kernel_adress;
     if(pe->status == NEW){
-        memset(frame,0,PGSIZE);
+        memset(frame,0,PGSIZE);//set zero
     }
     else if(pe->status == SWAP){
         //to do
@@ -95,9 +95,9 @@ page_set_dirty (struct hash* h, void *user_adress, bool dirty)
 {
   struct page_entry* temp = get_page_entry(h,user_adress);
   if (temp != NULL) {
-        if (dirty)
-        temp->dirty |= dirty;
-    }
+    temp->dirty = dirty;
+  }
     PANIC("error");
 }
+
 

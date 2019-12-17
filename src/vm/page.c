@@ -90,12 +90,12 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
     
     //to do//v -> p
     struct frame_entry* temp = kad2fe(frame);
-    bool success = pagedir_set_page(pagedir,user_adress,frame,true);
+    bool success = pagedir_set_page(pagedir,user_adress,frame,true);//can be modified by file
     if(success){
         pe->kernel_adress = frame;
         pe->status = FRAME;
         frame_unpin(temp);
-        pagedir_set_dirty(pagedir,frame,false);
+        pagedir_set_dirty(pagedir,frame,false);//same
         return true;
     }
     else{
@@ -113,5 +113,63 @@ page_set_dirty (struct hash* h, void *user_adress, bool dirty)
   }
     PANIC("error");
 }
+struct map_info* mmap_entity(mapid_t id,struct file* file,void* user_adress,int file_size){
+    struct map_info *temp = (struct map_info*) malloc(sizeof(struct map_info));
+    temp->id = id;
+    temp->file = file;
+    temp->user_adress = user_adress;
+    temp->size = file_size;
+    return temp;
+}
 
+mapid_t mmap_insert(struct file* file,void* user_adress,int file_size){
+    struct map_info* temp = mmap_entity(map_increase_id,file,user_adress,file_size);
+    map_increase_id++;//unique
+    list_push_back (&thread_current()->mmaps, &temp->elem);
+    return map_increase_id-1;
+}
 
+mapid_t mmap(int fd, void *user_adress){
+  if(fd <= 1){
+    return -1;
+  }
+  
+  file_sema_down();
+  struct file* temp_file = file_reopen(fd2fp(fd));
+  if(temp_file != NULL){
+    off_t len = file_length(temp_file);//len = 0?
+    for(int i = 0;i < len;i += PGSIZE){
+      void *temp = user_adress + i;
+      if(get_page_entry(thread_current()->page_table,temp)!=NULL){
+          file_sema_up();
+          return -1;
+      }
+    }
+//check done, now map
+    for(int i = 0;i < len;i += PGSIZE){
+      void *temp = user_adress + i;
+      int read_byte;
+      if(i + PGSIZE >= len){
+          read_byte = len - i;
+      }
+      else{
+          read_byte = PGSIZE;
+      }
+      int zero_byte = PGSIZE - zero_byte;//rest
+
+      //to do//install file in page
+    }
+//insert into list
+    mapid_t result = mmap_insert(temp_file,user_adress,len);
+    file_sema_up();
+    return result;
+  }
+  else{
+    file_sema_up();
+    return -1;
+  }
+}
+
+bool unmmap(mapid_t id){
+    //to do
+}

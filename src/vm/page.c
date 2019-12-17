@@ -3,6 +3,7 @@
 #include "vm/swap.h"
 #include <hash.h>
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 
 struct hash* page_init(){
     struct hash* Page_table = (struct hash*) malloc(sizeof(struct hash));
@@ -81,13 +82,26 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
         memset(frame,0,PGSIZE);//set zero
     }
     else if(pe->status == SWAP){
-        //to do
+        swap_in(frame,pe->swap);
     }
     else{//file
-        //to do
+        //to do 
     }
     
     //to do//v -> p
+    struct frame_entry* temp = kad2fe(frame);
+    bool success = pagedir_set_page(pagedir,user_adress,frame,true);
+    if(success){
+        pe->kernel_adress = frame;
+        pe->status = FRAME;
+        frame_unpin(temp);
+        pagedir_set_dirty(pagedir,frame,false);
+        return true;
+    }
+    else{
+        frame_free(temp);
+        return false;
+    }
 }
 
 void

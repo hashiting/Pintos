@@ -37,14 +37,15 @@ struct map_info
     int size;
 };
 
-struct hash* page_init();//by thread
+struct hash* page_table_init();//by thread
+void page_table_free(struct hash* page_table);
 unsigned p_hash_hash_func(const struct hash_elem *e , void *aux);
 bool p_hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *aux);
 
 struct page_entry* set_page_entry(void* user_adress, void* kernel_address,enum page_status s,int swap_index);
 struct page_entry* get_page_entry(struct hash *h,void *user_adress);
 
-bool Install_page_in_frame(struct hash* h,void *user_adress, void *kernel_adress,int swap_index);
+bool Install_page_in_frame(struct hash *h, void *user_adress, void *kernel_adress);
 bool Install_new_page(struct hash* h,void *user_adress);
 void Set_page_swap(struct hash *h, void* user_adress,int swap);
 

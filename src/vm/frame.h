@@ -19,9 +19,9 @@ struct frame_entry{
     struct thread *t;
 };
 
-void frame_init();
+void frame_table_init();
 struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int evict);
-struct frame_entry* frame_allo(enum palloc_flags flags,void* user_adress);
+struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_adress);
 struct frame_entry* frame_clock(uint32_t *pagedir);
 
 unsigned f_hash_hash_func(const struct hash_elem *e , void *aux);

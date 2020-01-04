@@ -11,7 +11,7 @@ bool f_hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *
     return hash_entry(a, struct frame_entry, helem)->kernel_adress < hash_entry(b, struct frame_entry, helem)->kernel_adress;
 }
 
-void frame_init(){
+void frame_table_init(){
     lock_init(&frame_lock);
     list_init(&frame_list);
     hash_init(&frame_table,f_hash_hash_func,f_hash_less_func,NULL);
@@ -27,7 +27,7 @@ struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int
     return temp;
 }
 
-struct frame_entry* frame_allo(enum palloc_flags flags,void* user_adress){
+struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_adress){
     lock_acquire(&frame_lock);
     void *kernel_adress = palloc_get_page(PAL_USER | flags);//get page
     if(kernel_adress != NULL){

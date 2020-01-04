@@ -2,13 +2,25 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 #include <hash.h>
+#include "threads/malloc.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 
-struct hash* page_init(){
+struct hash* page_table_init(){
     struct hash* Page_table = (struct hash*) malloc(sizeof(struct hash));
     hash_init(Page_table,p_hash_hash_func,p_hash_less_func,NULL);
     return Page_table;
+}
+
+void hash_destruct_func(struct hash_elem *e, void *aux){
+  struct page_entry *entry = hash_entry(e, struct page_entry, helem);
+  free(entry);
+}
+
+void page_table_free(struct hash* page_table){
+  ASSERT(page_table != NULL);
+  hash_destroy(page_table, hash_destruct_func);
+  free(page_table);
 }
 
 unsigned p_hash_hash_func(const struct hash_elem *e , void *aux){
@@ -39,14 +51,17 @@ struct page_entry* get_page_entry(struct hash *h,void *user_adress){
     return NULL;    
 }
 
-bool Install_page_in_frame(struct hash* h,void *user_adress, void *kernel_adress,int swap){
+bool Install_page_in_frame(struct hash *h, void *user_adress, void *kernel_adress)
+{
     struct page_entry* temp = set_page_entry(user_adress,kernel_adress,FRAME,-100);
     temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
     if(helem == NULL){
         return true;
+    }else{
+      free(temp);
+      return false;
     }
-    return false;
 }
 
 bool Install_new_page(struct hash* h,void *user_adress){
@@ -55,8 +70,10 @@ bool Install_new_page(struct hash* h,void *user_adress){
     struct hash_elem *helem = hash_insert(h,&temp->helem);
     if(helem == NULL){
         return true;
+    }else{
+      free(temp);
+      return false;
     }
-    return false;
 }
 
 void Set_page_swap(struct hash *h, void* user_adress,int swap){
@@ -77,7 +94,7 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
         return true;
     }
 
-    void* frame = frame_allo(PAL_USER,user_adress)->kernel_adress;
+    void* frame = frame_allocate(PAL_USER, user_adress)->kernel_adress;
     if(pe->status == NEW){
         memset(frame,0,PGSIZE);//set zero
     }

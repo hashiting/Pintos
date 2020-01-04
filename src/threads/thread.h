@@ -98,10 +98,6 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
-
-    /* Owned by thread.c. */
-    unsigned magic;                     /* Detects stack overflow. */
-
     int record;                         //exit code
     struct thread* parent;
     struct list childs;
@@ -113,8 +109,13 @@ struct thread
     struct self_info * self_;
 
     //pro3
+#ifdef VM
     struct hash* page_table;//
     struct list mmaps;//mmp
+#endif
+
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
   };
 
 /* If false (default), use round-robin scheduler.

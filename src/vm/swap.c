@@ -8,18 +8,18 @@ void swap_init(){
     bitmap_set_all(swap_bitmap,true);
 }
 
-int swap_out(void* adress){
+int swap_out(void* address){
     int temp = bitmap_scan(swap_bitmap,0,1,true);//get one for use
     for(int i = 0;i < NUM_SECTOR;i++){//write address to sector with bias
-        block_write(swap_block,temp*NUM_SECTOR + i,BLOCK_SECTOR_SIZE*i + adress);
+        block_write(swap_block,temp*NUM_SECTOR + i,BLOCK_SECTOR_SIZE*i + address);
     }
     bitmap_set(swap_bitmap,temp,false);//set false
     return temp;
 }
 
-void swap_in(void *adress,int index){
+void swap_in(void *address,int index){
     for(int i = 0;i < NUM_SECTOR;i++){//put sector to user address
-        block_read(swap_block,index*NUM_SECTOR + i,BLOCK_SECTOR_SIZE*i + adress);
+        block_read(swap_block,index*NUM_SECTOR + i,BLOCK_SECTOR_SIZE*i + address);
     }
     bitmap_set(swap_bitmap,index,true);
 }

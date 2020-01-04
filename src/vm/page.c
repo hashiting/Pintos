@@ -24,25 +24,25 @@ void page_table_free(struct hash* page_table){
 }
 
 unsigned p_hash_hash_func(const struct hash_elem *e , void *aux){
-    return hash_bytes(&hash_entry(e, struct page_entry, helem)->user_adress, sizeof(hash_entry(e, struct page_entry, helem)->user_adress));//set user adress as key
+    return hash_bytes(&hash_entry(e, struct page_entry, helem)->user_address, sizeof(hash_entry(e, struct page_entry, helem)->user_address));//set user address as key
 }
 
 bool p_hash_less_func(const struct hash_elem *a,const struct hash_elem *b,void *aux){
-    return hash_entry(a, struct page_entry, helem)->user_adress < hash_entry(b, struct page_entry, helem)->user_adress;
+    return hash_entry(a, struct page_entry, helem)->user_address < hash_entry(b, struct page_entry, helem)->user_address;
 }
 
-struct page_entry* set_page_entry(void* user_adress, void* kernel_address,enum page_status s,int swap){
+struct page_entry* set_page_entry(void* user_address, void* kernel_address,enum page_status s,int swap){
     struct page_entry* temp = (struct page_entry*)malloc(sizeof(struct page_entry));
-    temp->user_adress = user_adress;
-    temp->kernel_adress = kernel_address;
+    temp->user_address = user_address;
+    temp->kernel_address = kernel_address;
     temp->status = s;
     temp->swap = swap;
     return temp;
 }
 
-struct page_entry* get_page_entry(struct hash *h,void *user_adress){
+struct page_entry* get_page_entry(struct hash *h,void *user_address){
     struct page_entry* temp = (struct page_entry*)malloc(sizeof(struct page_entry));
-    temp->user_adress = user_adress;
+    temp->user_address = user_address;
     struct hash_elem *helem = hash_find(h,&temp->helem);
     if(helem != NULL){
         free(temp);
@@ -51,9 +51,9 @@ struct page_entry* get_page_entry(struct hash *h,void *user_adress){
     return NULL;    
 }
 
-bool Install_page_in_frame(struct hash *h, void *user_adress, void *kernel_adress)
+bool Install_page_in_frame(struct hash *h, void *user_address, void *kernel_address)
 {
-    struct page_entry* temp = set_page_entry(user_adress,kernel_adress,FRAME,-100);
+    struct page_entry* temp = set_page_entry(user_address,kernel_address,FRAME,-100);
     temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
     if(helem == NULL){
@@ -64,8 +64,8 @@ bool Install_page_in_frame(struct hash *h, void *user_adress, void *kernel_adres
     }
 }
 
-bool Install_new_page(struct hash* h,void *user_adress){
-    struct page_entry* temp = set_page_entry(user_adress,NULL,NEW,-100);
+bool Install_new_page(struct hash* h,void *user_address){
+    struct page_entry* temp = set_page_entry(user_address,NULL,NEW,-100);
     temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
     if(helem == NULL){
@@ -76,17 +76,17 @@ bool Install_new_page(struct hash* h,void *user_adress){
     }
 }
 
-void Set_page_swap(struct hash *h, void* user_adress,int swap){
-    struct page_entry* temp = get_page_entry(h,user_adress);
-    set_page_entry(user_adress,NULL,SWAP,swap);
+void Set_page_swap(struct hash *h, void* user_address,int swap){
+    struct page_entry* temp = get_page_entry(h,user_address);
+    set_page_entry(user_address,NULL,SWAP,swap);
 }
 
 bool Install_page_in_file(){
     //to do
 }
 
-bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
-    struct page_entry* pe = get_page_entry(h,user_adress);
+bool load_page(struct hash* h,uint32_t *pagedir, void *user_address){
+    struct page_entry* pe = get_page_entry(h,user_address);
     if(pe == NULL){
         return false;
     }
@@ -94,7 +94,7 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
         return true;
     }
 
-    void* frame = frame_allocate(PAL_USER, user_adress)->kernel_adress;
+    void* frame = frame_allocate(PAL_USER, user_address)->kernel_address;
     if(pe->status == NEW){
         memset(frame,0,PGSIZE);//set zero
     }
@@ -107,9 +107,9 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
     
     //to do//v -> p
     struct frame_entry* temp = kad2fe(frame);
-    bool success = pagedir_set_page(pagedir,user_adress,frame,true);//can be modified by file
+    bool success = pagedir_set_page(pagedir,user_address,frame,true);//can be modified by file
     if(success){
-        pe->kernel_adress = frame;
+        pe->kernel_address = frame;
         pe->status = FRAME;
         frame_unpin(temp);
         pagedir_set_dirty(pagedir,frame,false);//same
@@ -122,31 +122,31 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_adress){
 }
 
 void
-page_set_dirty (struct hash* h, void *user_adress, bool dirty) 
+page_set_dirty (struct hash* h, void *user_address, bool dirty) 
 {
-  struct page_entry* temp = get_page_entry(h,user_adress);
+  struct page_entry* temp = get_page_entry(h,user_address);
   if (temp != NULL) {
     temp->dirty = dirty;
   }
     PANIC("error");
 }
-struct map_info* mmap_entity(mapid_t id,struct file* file,void* user_adress,int file_size){
+struct map_info* mmap_entity(mapid_t id,struct file* file,void* user_address,int file_size){
     struct map_info *temp = (struct map_info*) malloc(sizeof(struct map_info));
     temp->id = id;
     temp->file = file;
-    temp->user_adress = user_adress;
+    temp->user_address = user_address;
     temp->size = file_size;
     return temp;
 }
 
-mapid_t mmap_insert(struct file* file,void* user_adress,int file_size){
-    struct map_info* temp = mmap_entity(map_increase_id,file,user_adress,file_size);
+mapid_t mmap_insert(struct file* file,void* user_address,int file_size){
+    struct map_info* temp = mmap_entity(map_increase_id,file,user_address,file_size);
     map_increase_id++;//unique
     list_push_back (&thread_current()->mmaps, &temp->elem);
     return map_increase_id-1;
 }
 
-mapid_t mmap(int fd, void *user_adress){
+mapid_t mmap(int fd, void *user_address){
   if(fd <= 1){
     return -1;
   }
@@ -156,7 +156,7 @@ mapid_t mmap(int fd, void *user_adress){
   if(temp_file != NULL){
     off_t len = file_length(temp_file);//len = 0?
     for(int i = 0;i < len;i += PGSIZE){
-      void *temp = user_adress + i;
+      void *temp = user_address + i;
       if(get_page_entry(thread_current()->page_table,temp)!=NULL){
           file_sema_up();
           return -1;
@@ -164,7 +164,7 @@ mapid_t mmap(int fd, void *user_adress){
     }
 //check done, now map
     for(int i = 0;i < len;i += PGSIZE){
-      void *temp = user_adress + i;
+      void *temp = user_address + i;
       int read_byte;
       if(i + PGSIZE >= len){
           read_byte = len - i;
@@ -177,7 +177,7 @@ mapid_t mmap(int fd, void *user_adress){
       //to do//install file in page
     }
 //insert into list
-    mapid_t result = mmap_insert(temp_file,user_adress,len);
+    mapid_t result = mmap_insert(temp_file,user_address,len);
     file_sema_up();
     return result;
   }

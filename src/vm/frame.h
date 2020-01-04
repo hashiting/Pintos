@@ -13,15 +13,15 @@ struct frame_entry{
     struct hash_elem helem;
     struct list_elem lelem;//element
 
-    void *user_adress;
-    void *kernel_adress;
+    void *user_address;
+    void *kernel_address;
     int pin;//for replacement//pin == 0 can not be replace,because not loaded.
     struct thread *t;
 };
 
 void frame_table_init();
-struct frame_entry* frame_entity_init(void* user_adress,void *kernel_address,int evict);
-struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_adress);
+struct frame_entry* frame_entity_init(void* user_address,void *kernel_address,int evict);
+struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_address);
 struct frame_entry* frame_clock(uint32_t *pagedir);
 
 unsigned f_hash_hash_func(const struct hash_elem *e , void *aux);
@@ -34,5 +34,5 @@ void frame_pin(struct frame_entry* entity);
 void frame_unpin(struct frame_entry* entity);
 
 //kernel address to frame entry entity
-struct frame_entry* kad2fe(void *kernel_adress);
+struct frame_entry* kad2fe(void *kernel_address);
 #endif

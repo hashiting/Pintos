@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "vm/page.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -18,11 +19,19 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-void check_address(void *p){
-  if(p == NULL||!is_user_vaddr(p)||!pagedir_get_page(thread_current()->pagedir,p)){
+void check_address(void *p, int *stack_pointer)
+{
+  if(p == NULL||!is_user_vaddr(p)){
     error_exit();
-  }
-  else{
+  } else if (!pagedir_get_page(thread_current()->pagedir,p)){
+#ifdef VM
+    if(p == stack_pointer - 1 || p == stack_pointer - 8){
+      Install_new_page(thread_current()->page_table, p);
+      return;
+    }
+#endif
+    error_exit();
+  } else{
     return;
   }
 }
@@ -70,7 +79,7 @@ static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
   int *stack_pointer = f->esp;
-  check_address(stack_pointer);
+  check_address(stack_pointer, stack_pointer);
   int system_call = *(stack_pointer);
   //printf("%d\n",system_call);
   switch(system_call){
@@ -79,43 +88,43 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = 0;
 
     case SYS_EXIT:
-      check_address(stack_pointer+1);
+      check_address(stack_pointer + 1, stack_pointer);
       thread_current()->record = *(stack_pointer+1);
       exit_();
 
     case SYS_WAIT:
-      check_address(stack_pointer+1);
+      check_address(stack_pointer + 1, stack_pointer);
       f->eax = process_wait(*(stack_pointer+1));//pass tid of process to do
       break;
 
     case SYS_EXEC:
-      check_address(stack_pointer+1);
-      check_address(*(stack_pointer+1));
+      check_address(stack_pointer + 1, stack_pointer);
+      check_address(*(stack_pointer + 1), stack_pointer);
       f->eax = process_execute(*(stack_pointer+1));//to do
       break;
 
     case SYS_CREATE:
-      check_address(stack_pointer+1);//address of address of file head
-      check_address(*(stack_pointer+1));//address of file head
-      check_address(stack_pointer+2);//address of file size
+      check_address(stack_pointer + 1, stack_pointer);//address of address of file head
+      check_address(*(stack_pointer + 1), stack_pointer);//address of file head
+      check_address(stack_pointer + 2, stack_pointer);//address of file size
       file_sema_down();
       f->eax = filesys_create(*(stack_pointer+1),*(stack_pointer+2));
       file_sema_up();
       break;
 
     case SYS_REMOVE:
-      check_address((stack_pointer+1));
-      check_address(*(stack_pointer+1));//file name
+      check_address((stack_pointer + 1), stack_pointer);
+      check_address(*(stack_pointer + 1), stack_pointer);//file name
       file_sema_down();
       f->eax = filesys_remove(*(stack_pointer+1));
       file_sema_up();
       break;
 
     case SYS_READ:
-      check_address(stack_pointer+1);//fd
-      check_address(stack_pointer+2);//void *buffer 
-      check_address(*(stack_pointer+2));
-      check_address(stack_pointer+3);//size
+      check_address(stack_pointer + 1, stack_pointer);//fd
+      check_address(stack_pointer + 2, stack_pointer);//void *buffer
+      check_address(*(stack_pointer + 2), stack_pointer);
+      check_address(stack_pointer + 3, stack_pointer);//size
       if(*(stack_pointer+1) == 0)
       {
         uint8_t* buffer = *(stack_pointer+2);
@@ -140,10 +149,10 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_WRITE:
       //printf ("write file!\n");
-      check_address(stack_pointer+1);//fd
-      check_address(stack_pointer+2);//buffer
-      check_address(*(stack_pointer+2));
-      check_address(stack_pointer+3);//size
+      check_address(stack_pointer + 1, stack_pointer);//fd
+      check_address(stack_pointer + 2, stack_pointer);//buffer
+      check_address(*(stack_pointer + 2), stack_pointer);
+      check_address(stack_pointer + 3, stack_pointer);//size
       //printf("%d\n",*(stack_pointer+1));
       //printf("%d\n",*(stack_pointer+3));
       if(*(stack_pointer+1)==1){
@@ -167,8 +176,8 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_OPEN:
-      check_address((stack_pointer+1));
-      check_address(*(stack_pointer+1));
+      check_address((stack_pointer + 1), stack_pointer);
+      check_address(*(stack_pointer + 1), stack_pointer);
       file_sema_down();
       struct file* target_file = filesys_open(*(stack_pointer+1));
       file_sema_up();
@@ -186,7 +195,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_CLOSE:
-      check_address(stack_pointer+1);//fd
+      check_address(stack_pointer + 1, stack_pointer);//fd
       //to do
       for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
         if(list_entry(e,struct file_search,elem)->fd == *(stack_pointer+1)){
@@ -199,7 +208,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_FILESIZE:
-      check_address(stack_pointer+1);//get fd, convert fd to file pointer.
+      check_address(stack_pointer + 1, stack_pointer);//get fd, convert fd to file pointer.
       
       struct file * temp3 = fd2fp(*(stack_pointer+1));
       if(temp3 != NULL){
@@ -214,15 +223,15 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_SEEK:
-      check_address(stack_pointer+1);//fd
-      check_address(stack_pointer+2);//position
+      check_address(stack_pointer + 1, stack_pointer);//fd
+      check_address(stack_pointer + 2, stack_pointer);//position
       file_sema_down();
       file_seek(fd2fp(*(stack_pointer+1)),*(stack_pointer+2));//to do
       file_sema_up();
       break;
 
     case SYS_TELL:
-      check_address(stack_pointer+1);
+      check_address(stack_pointer + 1, stack_pointer);
       struct file * temp4 = fd2fp(*(stack_pointer+1));
       if(temp4 != NULL){
         file_sema_down();
@@ -235,15 +244,15 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_MMAP:
-      check_address(stack_pointer+1);//fd
-      check_address(stack_pointer+2);//*address
-      check_address(*(stack_pointer+2));
+      check_address(stack_pointer + 1, stack_pointer);//fd
+      check_address(stack_pointer + 2, stack_pointer);//*address
+      check_address(*(stack_pointer + 2), stack_pointer);
       //
 
     break;
 
     case SYS_MUNMAP:
-      check_address(stack_pointer+1);//mmapid_t
+      check_address(stack_pointer + 1, stack_pointer);//mmapid_t
 
     break;
 

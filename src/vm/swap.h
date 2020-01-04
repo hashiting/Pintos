@@ -11,8 +11,8 @@ struct block *swap_block;
 struct bitmap *swap_bitmap;
 
 void swap_init();
-int swap_out(void *address);
-void swap_in(void *address, int index);
+int swap_out(void *address);//swap to a free slot in swap_block
+void swap_in(void *address, int index);//swap back to memory
 
 
 #endif

@@ -33,6 +33,7 @@
 #endif
 #ifdef VM
 #include "vm/frame.h"
+#include "vm/swap.h"
 #endif
 #ifdef FILESYS
 #include "devices/block.h"
@@ -121,6 +122,7 @@ kernel_main (void)
   /* Initialize frame table. */
 #ifdef VM
   frame_table_init();
+  swap_init();
 #endif
 
   /* Start thread scheduler and enable interrupts. */

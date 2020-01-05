@@ -605,6 +605,12 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   bool ret = (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+#ifdef VM
   ret = ret && Install_page_in_frame(t->page_table, upage, kpage);
+//  if(ret){
+//    struct frame_entry* entry = kad2fe(kpage);
+//    frame_unpin(entry);
+//  }
+#endif
   return ret;
 }

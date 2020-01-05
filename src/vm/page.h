@@ -24,8 +24,10 @@ struct page_entry{
     int swap;
     struct hash_elem helem;
     struct file* file;
+    off_t file_offset;
     int read_bytes;
     int zero_bytes;
+    bool file_writable;
 };
 
 struct map_info

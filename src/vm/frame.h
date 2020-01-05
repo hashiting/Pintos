@@ -15,12 +15,12 @@ struct frame_entry{
 
     void *user_address;
     void *kernel_address;
-    int pin;//for replacement//pin == 0 can not be replace,because not loaded.
+    bool pinned;//if true: can't be replace, because not loaded/installed.
     struct thread *t;
 };
 
 void frame_table_init();
-struct frame_entry* frame_entity_init(void* user_address,void *kernel_address,int evict);
+struct frame_entry* frame_entity_init(void* user_address, void *kernel_address, bool pinned);
 struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_address);
 struct frame_entry* frame_clock(uint32_t *pagedir);
 

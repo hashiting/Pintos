@@ -20,6 +20,8 @@ int swap_out(void* address){
 }
 
 void swap_in(void *address,int index){
+    if(bitmap_test(swap_bitmap, index))
+        PANIC("try to swap back an empty swap slot\n");
     for(int i = 0;i < NUM_SECTOR;i++){//put sector to user address
         block_read(swap_block,index*NUM_SECTOR + i,BLOCK_SECTOR_SIZE*i + address);
     }

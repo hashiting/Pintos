@@ -19,33 +19,34 @@ void frame_table_init(){
 }
 
 //call this function in init.c as frame is global
-struct frame_entry* frame_entity_init(void* user_address,void *kernel_address,int pin){
+struct frame_entry* frame_entity_init(void* user_address, void *kernel_address, bool pinned){
     struct frame_entry* temp = malloc(sizeof(struct frame_entry));
     temp->t = thread_current();
     temp->user_address = user_address;
     temp->kernel_address = kernel_address;
-    temp->pin = pin;
+    temp->pinned = pinned;
     return temp;
 }
 
 struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_address){
-    lock_acquire(&frame_lock);
+    lock_acquire(&frame_lock);//TODO narrow down lock range
     void *kernel_address = palloc_get_page(PAL_USER | flags);//get page
-    if(kernel_address != NULL){
-        struct frame_entry* entity = frame_entity_init(user_address,kernel_address,0);
-        hash_insert(&frame_table, &entity->helem);
-        list_push_back(&frame_list, &entity->lelem);
-        lock_release(&frame_lock);
-        return entity;
+    if(kernel_address == NULL){
+      // swap someone
+      struct frame_entry *evict = frame_clock(thread_current()->pagedir);
+      pagedir_clear_page(evict->t->pagedir, evict->user_address);
+      int swap_idx = swap_out(evict->kernel_address);
+      Set_page_swap(evict->t->page_table, evict->user_address, swap_idx);
+      struct frame_entry *entry = kad2fe(evict->kernel_address);
+      frame_free(entry);
+      kernel_address = palloc_get_page(PAL_USER | flags);//get page
+      ASSERT(kernel_address != NULL);
     }
-    else{
-        //to do // swap someone
-        struct frame_entry *evict = frame_clock(thread_current()->pagedir);
-        pagedir_clear_page(evict->t->pagedir, evict->user_address);
-        //to do
-        lock_release(&frame_lock);
-        return NULL;
-    }
+    struct frame_entry* entity = frame_entity_init(user_address,kernel_address,true);
+    hash_insert(&frame_table, &entity->helem);
+    list_push_back(&frame_list, &entity->lelem);
+    lock_release(&frame_lock);
+    return entity;
 }
 
 //run kad2fe before this two function
@@ -63,7 +64,7 @@ void frame_free(struct frame_entry* entity){
 struct frame_entry* frame_clock(uint32_t *pagedir){
     for(int i = 0;i < 2;i++){
         for(struct frame_entry* temp = list_begin (&frame_list);temp != list_end(&frame_list);temp = list_next(temp)){
-            if(temp->pin != 0){
+            if(!temp->pinned){
                 if(!pagedir_is_accessed(pagedir, temp->kernel_address)){
                     return temp;
                 }
@@ -75,18 +76,18 @@ struct frame_entry* frame_clock(uint32_t *pagedir){
         }
     }
     PANIC("no memory");
-    return NULL; 
+    return NULL;
 }
 
 //run kad2fe before this two function
 void frame_pin(struct frame_entry* entity){
     lock_acquire(&frame_lock);
-    entity->pin++;
+    entity->pinned = true;
     lock_release(&frame_lock);
 }
 void frame_unpin(struct frame_entry* entity){
     lock_acquire(&frame_lock);
-    entity->pin = 0;
+    entity->pinned = false;
     lock_release(&frame_lock);
 }
 

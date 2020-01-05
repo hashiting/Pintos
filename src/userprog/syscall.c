@@ -21,12 +21,14 @@ syscall_init (void)
 
 void check_address(void *p, int *stack_pointer)
 {
+  struct thread *t = thread_current();
   if(p == NULL||!is_user_vaddr(p)){
     error_exit();
-  } else if (!pagedir_get_page(thread_current()->pagedir,p)){
+  } else if (!pagedir_get_page(t->pagedir,p)){
 #ifdef VM
-    if(p == stack_pointer - 1 || p == stack_pointer - 8){
-      Install_new_page(thread_current()->page_table, p);
+    if((p == stack_pointer - 1 || p == stack_pointer - 8)
+    && get_page_entry(t->page_table, p) == NULL){
+      Install_new_page(t->page_table, p);
       return;
     }
 #endif

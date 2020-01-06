@@ -206,6 +206,13 @@ process_exit (void)
   struct hash* page_table = cur->page_table;
   page_table_free(page_table);
   cur->page_table = NULL;
+  /* unmmap */
+  struct list mmaps = cur->mmaps;
+  while(!list_empty(&mmaps)){
+    struct list_elem *e = list_begin(&mmaps);
+    struct map_info *map_info = list_entry(e, struct map_info, elem);
+    unmmap(map_info->id);
+  }
 #endif
 
   /* Destroy the current process's page directory and switch back

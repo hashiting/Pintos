@@ -53,11 +53,11 @@ struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_address){
 void frame_remove(struct frame_entry* entity){
     hash_delete(&frame_table,&entity->helem);
     list_remove(&entity->lelem);
+    free(entity);
 }
 void frame_free(struct frame_entry* entity){
     frame_remove(entity);
     palloc_free_page(entity->kernel_address);
-    free(entity);
 }
 
 //swap using clock//run two time

@@ -205,6 +205,7 @@ process_exit (void)
   /* Destroy page_table */
   struct hash* page_table = cur->page_table;
   page_table_free(page_table);
+  cur->page_table = NULL;
 #endif
 
   /* Destroy the current process's page directory and switch back
@@ -518,6 +519,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
 #ifdef VM
+    bool success = Install_page_in_file(thread_current->page_table, upage, file,
+      ofs, read_bytes, zero_bytes, writable);
+    if(!success)
+      return false;
     uint8_t *kpage = frame_allocate (PAL_USER, upage);
 #else
     uint8_t *kpage = palloc_get_page (PAL_USER);
@@ -554,6 +559,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+#ifdef VM
+      ofs += PGSIZE;
+#endif
     }
   return true;
 }

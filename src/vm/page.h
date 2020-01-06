@@ -27,7 +27,7 @@ struct page_entry{
     off_t file_offset;
     int read_bytes;
     int zero_bytes;
-    bool file_writable;
+    bool writable;
 };
 
 struct map_info
@@ -50,6 +50,8 @@ struct page_entry* get_page_entry(struct hash *h,void *user_address);
 bool Install_page_in_frame(struct hash *h, void *user_address, void *kernel_address);
 bool Install_new_page(struct hash* h,void *user_address);
 void Set_page_swap(struct hash *h, void* user_address,int swap);
+bool Install_page_in_file(struct hash *h, void *user_address, struct file *file,
+                          off_t file_offset, int read_bytes, int zero_bytes, bool writable);
 
 bool load_page(struct hash* h,uint32_t *pagedir, void *user_address);
 

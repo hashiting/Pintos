@@ -5,6 +5,7 @@
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "lib/string.h"
 
 struct hash* page_table_init(){
     struct hash* Page_table = (struct hash*) malloc(sizeof(struct hash));
@@ -14,6 +15,10 @@ struct hash* page_table_init(){
 
 void hash_destruct_func(struct hash_elem *e, void *aux){
   struct page_entry *entry = hash_entry(e, struct page_entry, helem);
+  if(entry->kernel_address != NULL){
+    struct frame_entry *frame_entry = kad2fe(entry->kernel_address);
+    frame_remove(frame_entry);
+  }
   free(entry);
 }
 
@@ -81,8 +86,31 @@ void Set_page_swap(struct hash *h, void* user_address,int swap){
     set_page_entry(user_address,NULL,SWAP,swap);
 }
 
-bool Install_page_in_file(){
-    //to do
+bool Install_page_in_file(struct hash *h, void *user_address, struct file *file,
+  off_t file_offset, int read_bytes, int zero_bytes, bool writable){
+  struct page_entry* entry = (struct page_entry*)malloc(sizeof(struct page_entry));
+  entry->user_address = user_address;
+  entry->kernel_address = NULL;
+  entry->file = file;
+  entry->file_offset = file_offset;
+  entry->read_bytes = read_bytes;
+  entry->zero_bytes = zero_bytes;
+  entry->writable = writable;
+
+  struct hash_elem *e = hash_insert(h, &entry->helem);
+  if(e == NULL)
+    return true;
+  PANIC("already an entry in page_table for this file\n");
+}
+
+bool load_page_from_file(struct page_entry *entry, void *kpage){
+  file_seek(entry->file, entry->file_offset);
+  off_t bytes_read = file_read(entry->file, kpage, entry->read_bytes);//read some file content into kpage
+  if(bytes_read != entry->read_bytes)
+    return false;
+  ASSERT(entry->read_bytes + entry->zero_bytes == PGSIZE);
+  memset(kpage + bytes_read, 0, entry->zero_bytes);//fill the rest of the kpage with 0
+  return true;
 }
 
 bool load_page(struct hash* h,uint32_t *pagedir, void *user_address){
@@ -95,19 +123,27 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_address){
     }
 
     void* frame = frame_allocate(PAL_USER, user_address)->kernel_address;
+    bool writable = true;
     if(pe->status == NEW){
         memset(frame,0,PGSIZE);//set zero
     }
     else if(pe->status == SWAP){
         swap_in(frame,pe->swap);
     }
-    else{//file
-        //to do 
+    else if(pe->status == FILE){//file
+        bool success = load_page_from_file(pe, frame);
+        if(!success){
+          frame_free(frame);
+          return false;
+        }
+        writable = pe->writable;
+    }else{
+      PANIC("no such page_table entry status\n");
     }
     
     //to do//v -> p
     struct frame_entry* temp = kad2fe(frame);
-    bool success = pagedir_set_page(pagedir,user_address,frame,true);//can be modified by file
+    bool success = pagedir_set_page(pagedir,user_address,frame,writable);//can be modified by file
     if(success){
         pe->kernel_address = frame;
         pe->status = FRAME;

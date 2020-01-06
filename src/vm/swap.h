@@ -13,6 +13,6 @@ struct bitmap *swap_bitmap;
 void swap_init();
 int swap_out(void *address);//swap to a free slot in swap_block
 void swap_in(void *address, int index);//swap back to memory
-
+void swap_remove(int index);//remove from swap bitmap
 
 #endif

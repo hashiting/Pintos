@@ -27,3 +27,10 @@ void swap_in(void *address,int index){
     }
     bitmap_set(swap_bitmap,index,true);
 }
+
+void swap_remove(int index)
+{
+  if(bitmap_test(swap_bitmap, index))
+    PANIC("try to swap back an empty swap slot\n");
+  bitmap_set(swap_bitmap,index,true);
+}

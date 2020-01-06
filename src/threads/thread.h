@@ -111,7 +111,7 @@ struct thread
     //pro3
 #ifdef VM
     struct hash* page_table;//since PT is named pagedir in pintos, supp_PT can be named PT
-    struct list mmaps;//mmp
+    struct list mmaps;//list of struct map_info
 #endif
 
     /* Owned by thread.c. */

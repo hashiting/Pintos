@@ -26,7 +26,7 @@ void check_address(void *p, int *stack_pointer)
     error_exit();
   } else if (!pagedir_get_page(t->pagedir,p)){
 #ifdef VM
-    if((p == stack_pointer - 1 || p == stack_pointer - 8)
+    if((p > stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
     && get_page_entry(t->page_table, p) == NULL){
       Install_new_page(t->page_table, p);
       return;
@@ -244,20 +244,20 @@ syscall_handler (struct intr_frame *f UNUSED)
         f->eax = -1;
       }
       break;
-
+#ifdef VM
     case SYS_MMAP:
       check_address(stack_pointer + 1, stack_pointer);//fd
       check_address(stack_pointer + 2, stack_pointer);//*address
       check_address(*(stack_pointer + 2), stack_pointer);
-      //
-
-    break;
+      mapid_t ret = mmap(stack_pointer + 1, stack_pointer + 2);
+      f->eax = ret;
+      break;
 
     case SYS_MUNMAP:
       check_address(stack_pointer + 1, stack_pointer);//mmapid_t
-
-    break;
-
+      unmmap(stack_pointer + 1);
+      break;
+#endif
     default:
       error_exit();
       break;

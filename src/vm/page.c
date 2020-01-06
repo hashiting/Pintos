@@ -91,6 +91,8 @@ bool Install_page_in_file(struct hash *h, void *user_address, struct file *file,
   struct page_entry* entry = (struct page_entry*)malloc(sizeof(struct page_entry));
   entry->user_address = user_address;
   entry->kernel_address = NULL;
+  entry->status = FILE;
+  entry->dirty = false;
   entry->file = file;
   entry->file_offset = file_offset;
   entry->read_bytes = read_bytes;
@@ -175,6 +177,18 @@ struct map_info* mmap_entity(mapid_t id,struct file* file,void* user_address,int
     return temp;
 }
 
+struct map_info* get_mmap_entity(struct list *mmaps, mapid_t id){
+  if(list_empty(mmaps))
+    return NULL;
+  struct list_elem *e;
+  for(e = list_begin(mmaps); e!= list_end(mmaps); e = list_next(e)){
+    struct map_info *map_info = list_entry(e, struct map_info, elem);
+    if(map_info->id == id)
+      return map_info;
+  }
+  return NULL;
+}
+
 mapid_t mmap_insert(struct file* file,void* user_address,int file_size){
     struct map_info* temp = mmap_entity(map_increase_id,file,user_address,file_size);
     map_increase_id++;//unique
@@ -186,7 +200,8 @@ mapid_t mmap(int fd, void *user_address){
   if(fd <= 1){
     return -1;
   }
-  
+  struct thread *t = thread_current();
+
   file_sema_down();
   struct file* temp_file = file_reopen(fd2fp(fd));
   if(temp_file != NULL){
@@ -200,17 +215,13 @@ mapid_t mmap(int fd, void *user_address){
     }
 //check done, now map
     for(int i = 0;i < len;i += PGSIZE){
-      void *temp = user_address + i;
-      int read_byte;
+      void *temp_addr = user_address + i;
+      int read_bytes = PGSIZE;
       if(i + PGSIZE >= len){
-          read_byte = len - i;
+        read_bytes = len - i;
       }
-      else{
-          read_byte = PGSIZE;
-      }
-      int zero_byte = PGSIZE - zero_byte;//rest
-
-      //to do//install file in page
+      int zero_bytes = PGSIZE - read_bytes;//rest
+      Install_page_in_file(t->page_table, temp_addr, temp_file, i, read_bytes, zero_bytes, true);
     }
 //insert into list
     mapid_t result = mmap_insert(temp_file,user_address,len);
@@ -223,6 +234,64 @@ mapid_t mmap(int fd, void *user_address){
   }
 }
 
-bool unmmap(mapid_t id){
-    //to do
+bool unmmap(mapid_t id)
+{
+  struct thread *t = thread_current();
+  struct map_info *map_info = get_mmap_entity(t->mmaps, id);
+  if(map_info == NULL)
+    return false;
+  file_sema_down();
+  off_t ofs = 0;
+  int file_size = map_info->size;
+  //ummap each page of file
+  for(ofs = 0; ofs < file_size; ofs = ofs + PGSIZE){
+    file_seek(map_info->file, ofs);
+    int bytes = PGSIZE;
+    if(file_size - ofs < PGSIZE)
+      bytes = file_size - ofs;
+    void *upage = map_info->user_address;
+    struct page_entry *page_entry = get_page_entry(t->page_table, upage);
+    ASSERT(page_entry != NULL)
+    struct frame_entry *frame_entry = kad2fe(page_entry->kernel_address);
+    bool dirty;
+    switch (page_entry->status){
+      case FRAME:
+        frame_pin(frame_entry);
+        //dirty: write back to file
+        dirty = page_entry->dirty
+          || pagedir_is_dirty(t->pagedir, page_entry->user_address)
+          || pagedir_is_dirty(t->pagedir, page_entry->kernel_address);
+        if(dirty){
+          file_write_at(map_info->file, page_entry->user_address, bytes, ofs);
+        }
+        //remove from frame table
+        frame_free(frame_entry);
+        //remove from pagedir
+        pagedir_clear_page(t->pagedir, page_entry->user_address);
+        break;
+      case SWAP:
+        //dirty: swap in, write back to file
+        dirty = page_entry->dirty
+          || pagedir_is_dirty(t->pagedir, page_entry->user_address);
+        if(dirty){
+          void *temp_addr = palloc_get_page(0);
+          swap_in(temp_addr, page_entry->swap);
+          file_write_at(map_info->file, temp_addr, PGSIZE, ofs);
+          palloc_free_page(temp_addr);
+        }
+        //not dirty: remove from swap bitmap
+        swap_remove(page_entry->swap);
+        break;
+      case FILE://TODO
+        break;
+      default:
+        PANIC("NEW pages shouldn't be unmapped\n");
+    }
+    hash_delete(t->page_table, page_entry->helem);
+  }
+  list_remove(& map_info->elem);
+  file_close(map_info->file);
+  free(map_info);
+  file_sema_up();
+  return true;
 }

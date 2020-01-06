@@ -516,7 +516,6 @@ init_thread (struct thread *t, const char *name, int priority)
   
   #ifdef VM
   list_init(&t->mmaps);
-  t->page_table = page_table_init();
   #endif
 
   old_level = intr_disable ();

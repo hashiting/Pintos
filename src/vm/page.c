@@ -237,7 +237,7 @@ mapid_t mmap(int fd, void *user_address){
 bool unmmap(mapid_t id)
 {
   struct thread *t = thread_current();
-  struct map_info *map_info = get_mmap_entity(t->mmaps, id);
+  struct map_info *map_info = get_mmap_entity(&t->mmaps, id);
   if(map_info == NULL)
     return false;
   file_sema_down();
@@ -287,7 +287,7 @@ bool unmmap(mapid_t id)
       default:
         PANIC("NEW pages shouldn't be unmapped\n");
     }
-    hash_delete(t->page_table, page_entry->helem);
+    hash_delete(t->page_table, &page_entry->helem);
   }
   list_remove(& map_info->elem);
   file_close(map_info->file);

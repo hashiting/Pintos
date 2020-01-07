@@ -513,7 +513,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = running_thread();
   t->self = NULL;
   list_init (&t->files);
-  
+
+  #ifdef VM
+  list_init(&t->mmaps);
+  #endif
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

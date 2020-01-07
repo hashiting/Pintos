@@ -86,7 +86,6 @@ start_process (void *file_name_)
 
 #ifdef VM
   struct thread *t = thread_current();
-  list_init(&t->mmaps);
   t->page_table = page_table_init();
 #endif
 
@@ -95,6 +94,11 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+
+  #ifdef VM
+    thread_current()->page_table = page_table_init();
+  #endif
+
   success = load (real_file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -346,6 +350,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file_sema_down();
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
+
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();

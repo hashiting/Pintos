@@ -152,7 +152,7 @@ page_fault (struct intr_frame *f)
 #ifdef VM
   /* Project3: implement virtual memory */
   struct thread *t = thread_current();
-  bool ret = load_page(t->page_table, t->pagedir, fault_addr);
+  bool ret = load_page(t->page_table, t->pagedir, pg_round_down(fault_addr));
   if(ret)
     return;
 #endif

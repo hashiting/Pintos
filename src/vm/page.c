@@ -2,6 +2,7 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 #include <hash.h>
+#include "userprog/syscall.h"
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
@@ -15,10 +16,12 @@ struct hash* page_table_init(){
 
 void hash_destruct_func(struct hash_elem *e, void *aux){
   struct page_entry *entry = hash_entry(e, struct page_entry, helem);
-  if(entry->kernel_address != NULL){
+  if(entry->kernel_address != NULL){//FRAME
     struct frame_entry *frame_entry = kad2fe(entry->kernel_address);
     frame_remove(frame_entry);
   }
+  if(entry->status == SWAP)
+    swap_remove(entry->swap);
   free(entry);
 }
 
@@ -159,15 +162,52 @@ bool load_page(struct hash* h,uint32_t *pagedir, void *user_address){
     }
 }
 
+void page_pin(struct hash *h, void *user_address){
+  struct page_entry *page_entry = get_page_entry(h, user_address);
+  if(page_entry != NULL && page_entry->status == FRAME){
+    struct frame_entry *frame_entry = kad2fe(page_entry->kernel_address);
+    frame_pin(frame_entry);
+  }
+}
+
+void page_unpin(struct hash *h, void *user_address){
+  struct page_entry *page_entry = get_page_entry(h, user_address);
+  if(page_entry == NULL)
+    PANIC("try to unpin a page not in page table\n");
+  if(page_entry->status == FRAME){
+    struct frame_entry *frame_entry = kad2fe(page_entry->kernel_address);
+    frame_unpin(frame_entry);
+  }
+}
+
+void buffer_load_and_pin(void *buffer, size_t size){
+  struct thread *t = thread_current();
+  struct hash *page_table = t->page_table;
+  uint32_t *pagedir = t->pagedir;
+  for(void *ofs = pg_round_down(buffer); ofs < buffer + size; ofs += PGSIZE){
+    load_page(page_table, t->pagedir, ofs);
+    page_pin(page_table, ofs);
+  }
+}
+
+void buffer_unpin(void *buffer, size_t size){
+  struct hash *page_table = thread_current()->page_table;
+  for(void *ofs = pg_round_down(buffer); ofs < buffer + size; ofs += PGSIZE){
+    page_unpin(page_table, ofs);
+  }
+}
+
 void
 page_set_dirty (struct hash* h, void *user_address, bool dirty) 
 {
   struct page_entry* temp = get_page_entry(h,user_address);
   if (temp != NULL) {
-    temp->dirty = dirty;
+    temp->dirty = dirty || temp->dirty;
+    return;
   }
-    PANIC("error");
+    PANIC("no page of this user_address\n");
 }
+
 struct map_info* mmap_entity(mapid_t id,struct file* file,void* user_address,int file_size){
     struct map_info *temp = (struct map_info*) malloc(sizeof(struct map_info));
     temp->id = id;
@@ -196,7 +236,7 @@ mapid_t mmap_insert(struct file* file,void* user_address,int file_size){
     return map_increase_id-1;
 }
 
-mapid_t mmap(int fd, void *user_address){
+mapid_t sys_mmap(int fd, void *user_address){
   if(fd <= 1){
     return -1;
   }
@@ -208,7 +248,7 @@ mapid_t mmap(int fd, void *user_address){
     off_t len = file_length(temp_file);//len = 0?
     for(int i = 0;i < len;i += PGSIZE){
       void *temp = user_address + i;
-      if(get_page_entry(thread_current()->page_table,temp)!=NULL){
+      if(get_page_entry(t->page_table,temp)!=NULL){
           file_sema_up();
           return -1;
       }
@@ -234,10 +274,10 @@ mapid_t mmap(int fd, void *user_address){
   }
 }
 
-bool unmmap(mapid_t id)
+bool sys_unmmap(mapid_t id)
 {
   struct thread *t = thread_current();
-  struct map_info *map_info = get_mmap_entity(t->mmaps, id);
+  struct map_info *map_info = get_mmap_entity(&t->mmaps, id);
   if(map_info == NULL)
     return false;
   file_sema_down();
@@ -245,7 +285,6 @@ bool unmmap(mapid_t id)
   int file_size = map_info->size;
   //ummap each page of file
   for(ofs = 0; ofs < file_size; ofs = ofs + PGSIZE){
-    file_seek(map_info->file, ofs);
     int bytes = PGSIZE;
     if(file_size - ofs < PGSIZE)
       bytes = file_size - ofs;
@@ -278,16 +317,17 @@ bool unmmap(mapid_t id)
           swap_in(temp_addr, page_entry->swap);
           file_write_at(map_info->file, temp_addr, PGSIZE, ofs);
           palloc_free_page(temp_addr);
+        }else{
+          //not dirty: remove from swap bitmap
+          swap_remove(page_entry->swap);
         }
-        //not dirty: remove from swap bitmap
-        swap_remove(page_entry->swap);
         break;
       case FILE://TODO
         break;
       default:
         PANIC("NEW pages shouldn't be unmapped\n");
     }
-    hash_delete(t->page_table, page_entry->helem);
+    hash_delete(t->page_table, &page_entry->helem);
   }
   list_remove(& map_info->elem);
   file_close(map_info->file);

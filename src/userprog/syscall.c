@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "vm/page.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "pagedir.h"
@@ -17,25 +18,6 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-}
-
-void check_address(void *p, int *stack_pointer)
-{
-  struct thread *t = thread_current();
-  if(p == NULL||!is_user_vaddr(p)){
-    error_exit();
-  } else if (!pagedir_get_page(t->pagedir,p)){
-#ifdef VM
-    if((p > stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
-    && get_page_entry(t->page_table, p) == NULL){
-      Install_new_page(t->page_table, p);
-      return;
-    }
-#endif
-    error_exit();
-  } else{
-    return;
-  }
 }
 
 void exit_(){
@@ -64,6 +46,25 @@ void exit_(){
 void error_exit(){
   thread_current()->record = -1;
   exit_ ();
+}
+
+void check_address(void *p, int *stack_pointer)
+{
+  struct thread *t = thread_current();
+  if(p == NULL||!is_user_vaddr(p)){
+    error_exit();
+  } else if (!pagedir_get_page(t->pagedir,p)){
+#ifdef VM
+    if((p > stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
+    && get_page_entry(t->page_table, p) == NULL){
+      Install_new_page(t->page_table, p);
+      return;
+    }
+#endif
+    error_exit();
+  } else{
+    return;
+  }
 }
 
 struct file* fd2fp(int fd){
@@ -142,7 +143,13 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
         else{
           file_sema_down();
+#ifdef VM
+          buffer_load_and_pin(*(stack_pointer+2),*(stack_pointer+3));
+#endif
           f->eax = file_read(temp,*(stack_pointer+2),*(stack_pointer+3));
+#ifdef VM
+          buffer_unpin(*(stack_pointer+2),*(stack_pointer+3));
+#endif
           file_sema_up();
         }
       }
@@ -169,7 +176,13 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
         else{
           file_sema_down();
+#ifdef VM
+          buffer_load_and_pin(*(stack_pointer+2),*(stack_pointer+3));
+#endif
           f->eax = file_write(temp2,*(stack_pointer+2),*(stack_pointer+3));
+#ifdef VM
+          buffer_unpin(*(stack_pointer+2),*(stack_pointer+3));
+#endif
           file_sema_up();
           //printf("a%d\n",f->eax);
         }
@@ -249,13 +262,13 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(stack_pointer + 1, stack_pointer);//fd
       check_address(stack_pointer + 2, stack_pointer);//*address
       check_address(*(stack_pointer + 2), stack_pointer);
-      mapid_t ret = mmap(stack_pointer + 1, stack_pointer + 2);
+      mapid_t ret = sys_mmap(*(stack_pointer + 1), *(stack_pointer + 2));
       f->eax = ret;
       break;
 
     case SYS_MUNMAP:
       check_address(stack_pointer + 1, stack_pointer);//mmapid_t
-      unmmap(stack_pointer + 1);
+      sys_unmmap(*(stack_pointer + 1));
       break;
 #endif
     default:

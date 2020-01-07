@@ -35,10 +35,17 @@ struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_address){
       // swap someone
       struct frame_entry *evict = frame_clock(thread_current()->pagedir);
       pagedir_clear_page(evict->t->pagedir, evict->user_address);
+
+      bool dirty = pagedir_is_dirty(evict->t->pagedir, evict->user_address)
+        ||pagedir_is_dirty(evict->t->pagedir, evict->kernel_address);
+      page_set_dirty(evict->t->page_table, evict->user_address, dirty);
+
       int swap_idx = swap_out(evict->kernel_address);
       Set_page_swap(evict->t->page_table, evict->user_address, swap_idx);
+
       struct frame_entry *entry = kad2fe(evict->kernel_address);
       frame_free(entry);
+
       kernel_address = palloc_get_page(PAL_USER | flags);//get page
       ASSERT(kernel_address != NULL);
     }
@@ -63,8 +70,11 @@ void frame_free(struct frame_entry* entity){
 //swap using clock//run two time
 struct frame_entry* frame_clock(uint32_t *pagedir){
     for(int i = 0;i < 2;i++){
-        for(struct frame_entry* temp = list_begin (&frame_list);temp != list_end(&frame_list);temp = list_next(temp)){
-            if(!temp->pinned){
+      if(list_empty(&frame_list))
+        PANIC("can't swap an empty frame list\n");
+      for(struct list_elem *e = list_begin (&frame_list); e != list_end(&frame_list); e = list_next(e)){
+        struct frame_entry* temp = list_entry(e, struct frame_entry, lelem);
+        if(!temp->pinned){
                 if(!pagedir_is_accessed(pagedir, temp->kernel_address)){
                     return temp;
                 }

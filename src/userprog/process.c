@@ -15,6 +15,7 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "lib/string.h"
@@ -82,6 +83,12 @@ start_process (void *file_name_)
   char *real_file_name;
   real_file_name = strtok_r(file_name, " ", &save_ptr);
   //printf("%s\n\n",real_file_name);
+
+#ifdef VM
+  struct thread *t = thread_current();
+  list_init(&t->mmaps);
+  t->page_table = page_table_init();
+#endif
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -211,7 +218,7 @@ process_exit (void)
   while(!list_empty(&mmaps)){
     struct list_elem *e = list_begin(&mmaps);
     struct map_info *map_info = list_entry(e, struct map_info, elem);
-    unmmap(map_info->id);
+    sys_unmmap(map_info->id);
   }
 #endif
 
@@ -526,7 +533,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
 #ifdef VM
-    bool success = Install_page_in_file(thread_current->page_table, upage, file,
+    bool success = Install_page_in_file(thread_current()->page_table, upage, file,
       ofs, read_bytes, zero_bytes, writable);
     if(!success)
       return false;

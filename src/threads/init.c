@@ -103,6 +103,11 @@ kernel_main (void)
   malloc_init ();
   paging_init ();
 
+/* Initialize frame table */
+#ifdef VM
+  frame_table_init();
+#endif
+
   /* Segmentation. */
 #ifdef USERPROG
   tss_init ();
@@ -119,12 +124,6 @@ kernel_main (void)
   syscall_init ();
 #endif
 
-  /* Initialize frame table. */
-#ifdef VM
-  frame_table_init();
-  swap_init();
-#endif
-
   /* Start thread scheduler and enable interrupts. */
   thread_start ();
   serial_init_queue ();
@@ -135,6 +134,11 @@ kernel_main (void)
   ide_init ();
   locate_block_devices ();
   filesys_init (format_filesys);
+#endif
+
+  /* Initialize swap. */
+#ifdef VM
+  swap_init();
 #endif
 
   printf ("Boot complete.\n");

@@ -55,7 +55,7 @@ void check_address(void *p, int *stack_pointer)
     error_exit();
   } else if (!pagedir_get_page(t->pagedir,p)){
 #ifdef VM
-    if((p > stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
+    if((p >= stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
     && get_page_entry(t->page_table, p) == NULL){
       Install_new_page(t->page_table, p);
       return;

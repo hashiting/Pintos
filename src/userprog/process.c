@@ -20,6 +20,7 @@
 #include "threads/vaddr.h"
 #include "lib/string.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -84,20 +85,11 @@ start_process (void *file_name_)
   real_file_name = strtok_r(file_name, " ", &save_ptr);
   //printf("%s\n\n",real_file_name);
 
-#ifdef VM
-  struct thread *t = thread_current();
-  t->page_table = page_table_init();
-#endif
-
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-
-  #ifdef VM
-    thread_current()->page_table = page_table_init();
-  #endif
 
   success = load (real_file_name, &if_.eip, &if_.esp);
   /* If load failed, quit. */
@@ -350,7 +342,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file_sema_down();
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
-
+#ifdef VM
+  t->page_table = page_table_init();
+#endif
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
@@ -542,7 +536,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       ofs, read_bytes, zero_bytes, writable);
     if(!success)
       return false;
-    uint8_t *kpage = frame_allocate (PAL_USER, upage);
+    void *kpage = frame_allocate (PAL_USER, upage)->kernel_address;
+    kpage = (uint8_t *)kpage;
 #else
     uint8_t *kpage = palloc_get_page (PAL_USER);
 #endif
@@ -593,7 +588,7 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 #ifdef VM
-  kpage = frame_allocate(PAL_USER | PAL_ZERO, ((uint8_t *) PHYS_BASE) - PGSIZE);
+  kpage = (uint8_t *)(frame_allocate(PAL_USER | PAL_ZERO, ((uint8_t *) PHYS_BASE) - PGSIZE)->kernel_address);
 #else
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
 #endif
@@ -634,10 +629,10 @@ install_page (void *upage, void *kpage, bool writable)
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 #ifdef VM
   ret = ret && Install_page_in_frame(t->page_table, upage, kpage);
-//  if(ret){
-//    struct frame_entry* entry = kad2fe(kpage);
-//    frame_unpin(entry);
-//  }
+  if(ret){
+    struct frame_entry* entry = kad2fe(kpage);
+    frame_unpin(entry);
+  }
 #endif
   return ret;
 }

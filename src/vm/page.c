@@ -322,7 +322,7 @@ bool sys_unmmap(mapid_t id)
           swap_remove(page_entry->swap);
         }
         break;
-      case FILE://TODO
+      case FILE://already in file, no need to write back
         break;
       default:
         PANIC("NEW pages shouldn't be unmapped\n");

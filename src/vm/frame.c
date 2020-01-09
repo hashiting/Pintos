@@ -63,8 +63,10 @@ void frame_remove(struct frame_entry* entity){
     free(entity);
 }
 void frame_free(struct frame_entry* entity){
-    frame_remove(entity);
+    hash_delete(&frame_table,&entity->helem);
+    list_remove(&entity->lelem);
     palloc_free_page(entity->kernel_address);
+    free(entity);
 }
 
 //swap using clock//run two time
@@ -104,7 +106,7 @@ void frame_unpin(struct frame_entry* entity){
 struct frame_entry* kad2fe(void *kernel_address){
     struct frame_entry* temp = malloc(sizeof(struct frame_entry));
     temp->kernel_address = kernel_address;
-    printf("frame_table size: %d\n", hash_size(&frame_table));
+    //printf("frame_table size: %d\n", hash_size(&frame_table));
     struct hash_elem *h = hash_find (&frame_table, &temp->helem);
     if(h != NULL){
         return hash_entry(h,struct frame_entry,helem);

@@ -61,7 +61,7 @@ struct page_entry* get_page_entry(struct hash *h,void *user_address){
 
 bool Install_page_in_frame(struct hash *h, void *user_address, void *kernel_address)
 {
-    printf("frame: size of hash is %d\n",hash_size(h));
+    //printf("frame: size of hash is %d\n",hash_size(h));
     struct page_entry* temp = set_page_entry(user_address,kernel_address,FRAME,-100);
     temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
@@ -74,7 +74,7 @@ bool Install_page_in_frame(struct hash *h, void *user_address, void *kernel_addr
 }
 
 bool Install_new_page(struct hash* h,void *user_address){
-    printf("new page: size of hash is %d\n",hash_size(h));
+    //printf("new page: size of hash is %d\n",hash_size(h));
     struct page_entry* temp = set_page_entry(user_address,NULL,NEW,-100);
     temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
@@ -94,7 +94,7 @@ void Set_page_swap(struct hash *h, void* user_address,int swap){
 
 bool Install_page_in_file(struct hash *h, void *user_address, struct file *file,
   off_t file_offset, int read_bytes, int zero_bytes, bool writable){
-  printf("file: size of hash is %d\n",hash_size(h));
+  //printf("file: size of hash is %d\n",hash_size(h));
   struct page_entry* entry = (struct page_entry*)malloc(sizeof(struct page_entry));
   entry->user_address = user_address;
   entry->kernel_address = NULL;
@@ -241,6 +241,7 @@ mapid_t mmap_insert(struct file* file,void* user_address,int file_size){
 }
 
 mapid_t sys_mmap(int fd, void *user_address){
+  if (user_address == NULL || pg_ofs(user_address) != 0) return -1;
   if(fd <= 1){
     return -1;
   }

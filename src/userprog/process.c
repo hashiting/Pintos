@@ -209,13 +209,13 @@ process_exit (void)
   //printf("process exit begin\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
 #ifdef VM
 
   /* unmmap */
-  struct list mmaps = cur->mmaps;
-  while(!list_empty(&mmaps)){
-    struct list_elem *e = list_begin(&mmaps);
+  struct list *mmaps = &cur->mmaps;
+  while(!list_empty(mmaps)){
+    struct list_elem *e = list_begin(mmaps);
     struct map_info *map_info = list_entry(e, struct map_info, elem);
     sys_unmmap(map_info->id);
   }
@@ -542,14 +542,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Get a page of memory. */
 #ifdef VM
     bool success = Install_page_in_file(thread_current()->page_table, upage, file,
-      ofs, read_bytes, zero_bytes, writable);
+      ofs, page_read_bytes, page_zero_bytes, writable);
     if(!success)
       return false;
     //printf("Test1\n");
     //void *kpage = frame_allocate (PAL_USER, upage)->kernel_address;
     //kpage = (uint8_t *)kpage;
 #else
-    uint8_t *kpage = frame_allocate (PAL_USER, upage);
+    uint8_t *kpage = palloc_get_page (PAL_USER);
     if (kpage == NULL)
         return false;
       //printf("Test2\n");
@@ -557,7 +557,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
         //printf("Test3\n");
-        frame_free (kpage);
+        palloc_free_page (kpage);
           //printf("Test4\n");
           return false;
         }
@@ -567,7 +567,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable)) 
         {
-          frame_free (kpage);
+          palloc_free_page(kpage);
           return false; 
         }
 #endif
@@ -587,6 +587,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
+#ifdef VM
   uint8_t *kpage;
   bool success = false;
   struct frame_entry *frame_entry = frame_allocate (PAL_USER | PAL_ZERO, PHYS_BASE - PGSIZE);
@@ -601,6 +602,21 @@ setup_stack (void **esp)
         frame_free (kpage);
       }
     }
+#else
+  uint8_t *kpage;
+  bool success = false;
+  kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+  if (kpage != NULL)
+    {
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      if (success){
+        *esp = PHYS_BASE;
+      }
+      else{
+        palloc_free_page (kpage);
+      }
+    }
+#endif
   return success;
 }
 

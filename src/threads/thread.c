@@ -323,7 +323,6 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
-  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,

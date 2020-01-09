@@ -5,7 +5,6 @@
 #include <bitmap.h>
 #include "threads/vaddr.h"
 
-#define NUM_SECTOR PGSIZE / BLOCK_SECTOR_SIZE
 
 struct block *swap_block;
 struct bitmap *swap_bitmap;

@@ -22,6 +22,12 @@
 #include "vm/page.h"
 #include "vm/frame.h"
 
+#ifndef VM
+// alternative of vm-related functions introduced in Project 3
+#define frame_allocate(x, y) palloc_get_page(x)
+#define frame_free(x) palloc_free_page(x)
+#endif
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -543,7 +549,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     //void *kpage = frame_allocate (PAL_USER, upage)->kernel_address;
     //kpage = (uint8_t *)kpage;
 #else
-    uint8_t *kpage = palloc_get_page (PAL_USER);
+    uint8_t *kpage = frame_allocate (PAL_USER, upage);
     if (kpage == NULL)
         return false;
       //printf("Test2\n");
@@ -551,7 +557,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
         //printf("Test3\n");
-        palloc_free_page (kpage);
+        frame_free (kpage);
           //printf("Test4\n");
           return false;
         }
@@ -561,7 +567,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable)) 
         {
-          palloc_free_page (kpage);
+          frame_free (kpage);
           return false; 
         }
 #endif
@@ -583,7 +589,8 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  struct frame_entry *frame_entry = frame_allocate (PAL_USER | PAL_ZERO, PHYS_BASE - PGSIZE);
+  kpage = frame_entry->kernel_address;
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -591,7 +598,7 @@ setup_stack (void **esp)
         *esp = PHYS_BASE;
       }
       else{
-        palloc_free_page (kpage);
+        frame_free (kpage);
       }
     }
   return success;

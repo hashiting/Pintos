@@ -56,8 +56,9 @@ void check_address(void *p, int *stack_pointer)
   } else if (!pagedir_get_page(t->pagedir,p)){
 #ifdef VM
     if((p >= stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
-    && get_page_entry(t->page_table, p) == NULL){
-      Install_new_page(t->page_table, p);
+    && (PHYS_BASE - pg_round_down(p)) <= 0x800000
+    && get_page_entry(t->page_table, pg_round_down(p)) == NULL){
+      Install_new_page(t->page_table, pg_round_down(p));
       return;
     }
 #endif

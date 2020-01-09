@@ -153,11 +153,20 @@ page_fault (struct intr_frame *f)
 #ifdef VM
   /* Project3: implement virtual memory */
   struct thread *t = thread_current();
-  bool ret = load_page(t->page_table, t->pagedir, pg_round_down(fault_addr));
-  if(ret)
-    return;
+  struct page_entry *page_entry = get_page_entry(t->page_table, pg_round_down(fault_addr));
+  if(page_entry != NULL && page_entry->status != FRAME){
+    bool ret = load_page(t->page_table, t->pagedir, pg_round_down(fault_addr));
+    if(ret)
+      return;
+  }else if(page_entry == NULL
+  && (f->esp <= fault_addr || fault_addr == f->esp - 4 || fault_addr == f->esp - 32)
+  && (PHYS_BASE - pg_round_down(fault_addr)) <= 0x800000
+  && get_page_entry(t->page_table, pg_round_down(fault_addr)) == NULL){
+    //stack growth
+    Install_new_page(t->page_table, pg_round_down(fault_addr));
+      return;
+  }
 #endif
-
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */

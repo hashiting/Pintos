@@ -189,7 +189,7 @@ void buffer_load_and_pin(void *buffer, size_t size){
   struct hash *page_table = t->page_table;
   uint32_t *pagedir = t->pagedir;
   for(void *ofs = pg_round_down(buffer); ofs < buffer + size; ofs += PGSIZE){
-    load_page(page_table, t->pagedir, ofs);
+    load_page(page_table, pagedir, ofs);
     page_pin(page_table, ofs);
   }
 }

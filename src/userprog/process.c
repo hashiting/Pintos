@@ -211,7 +211,7 @@ process_exit (void)
   uint32_t *pd;
   printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
 #ifdef VM
-
+//printf("aaaaaaaaaaaaaa----------------------------\n");
   /* unmmap */
   struct list *mmaps = &cur->mmaps;
   while(!list_empty(mmaps)){
@@ -219,7 +219,7 @@ process_exit (void)
     struct map_info *map_info = list_entry(e, struct map_info, elem);
     sys_unmmap(map_info->id);
   }
-
+//printf("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-------------\n");
   /* Destroy page_table */
   struct hash* page_table = cur->page_table;
   page_table_free(page_table);

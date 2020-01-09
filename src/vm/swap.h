@@ -5,7 +5,6 @@
 #include <bitmap.h>
 #include "threads/vaddr.h"
 
-
 struct block *swap_block;
 struct bitmap *swap_bitmap;
 

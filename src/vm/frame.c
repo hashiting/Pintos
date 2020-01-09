@@ -49,7 +49,10 @@ struct frame_entry* frame_allocate(enum palloc_flags flags, void* user_address){
       kernel_address = palloc_get_page(PAL_USER | flags);//get page
       ASSERT(kernel_address != NULL);
     }
+    ASSERT(pg_ofs (kernel_address) == 0);
+//    printf("kernel_address in frame allocate: %p\n", kernel_address);
     struct frame_entry* entity = frame_entity_init(user_address,kernel_address,true);
+//    printf("kernel_address in frame allocate2: %p\n", kernel_address);
     hash_insert(&frame_table, &entity->helem);
     list_push_back(&frame_list, &entity->lelem);
     lock_release(&frame_lock);
@@ -63,8 +66,12 @@ void frame_remove(struct frame_entry* entity){
     free(entity);
 }
 void frame_free(struct frame_entry* entity){
-    frame_remove(entity);
+    //frame_remove(entity);
+  hash_delete(&frame_table,&entity->helem);
+  list_remove(&entity->lelem);
+//  printf("kernel_address in free--------------------------: %p\n", entity->kernel_address);
     palloc_free_page(entity->kernel_address);
+  free(entity);
 }
 
 //swap using clock//run two time
@@ -75,6 +82,7 @@ struct frame_entry* frame_clock(uint32_t *pagedir){
       for(struct list_elem *e = list_begin (&frame_list); e != list_end(&frame_list); e = list_next(e)){
         struct frame_entry* temp = list_entry(e, struct frame_entry, lelem);
         if(!temp->pinned){
+//          printf("kernel_address in clock: %p\n", temp->kernel_address);
                 if(!pagedir_is_accessed(pagedir, temp->kernel_address)){
                     return temp;
                 }
@@ -104,9 +112,11 @@ void frame_unpin(struct frame_entry* entity){
 struct frame_entry* kad2fe(void *kernel_address){
     struct frame_entry* temp = malloc(sizeof(struct frame_entry));
     temp->kernel_address = kernel_address;
-    printf("frame_table size: %d\n", hash_size(&frame_table));
+//    printf("kernel_address in kad2fe: %p\n", kernel_address);
+//    printf("frame_table size: %d\n", hash_size(&frame_table));
     struct hash_elem *h = hash_find (&frame_table, &temp->helem);
     if(h != NULL){
+//      printf("kernel_address in kad2fe2=========================: %p\n", hash_entry(h,struct frame_entry,helem)->kernel_address);
         return hash_entry(h,struct frame_entry,helem);
     }
     return NULL;

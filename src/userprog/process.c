@@ -209,17 +209,17 @@ process_exit (void)
   //printf("process exit begin\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
 #ifdef VM
-
+//printf("aaaaaaaaaaaaaa----------------------------\n");
   /* unmmap */
-  struct list mmaps = cur->mmaps;
-  while(!list_empty(&mmaps)){
-    struct list_elem *e = list_begin(&mmaps);
+  struct list *mmaps = &cur->mmaps;
+  while(!list_empty(mmaps)){
+    struct list_elem *e = list_begin(mmaps);
     struct map_info *map_info = list_entry(e, struct map_info, elem);
     sys_unmmap(map_info->id);
   }
-
+//printf("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-------------\n");
   /* Destroy page_table */
   struct hash* page_table = cur->page_table;
   page_table_free(page_table);
@@ -542,7 +542,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Get a page of memory. */
 #ifdef VM
     bool success = Install_page_in_file(thread_current()->page_table, upage, file,
-      ofs, read_bytes, zero_bytes, writable);
+      ofs, page_read_bytes, page_zero_bytes, writable);
     if(!success)
       return false;
     //printf("Test1\n");

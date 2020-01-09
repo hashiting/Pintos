@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "userprog/process.h"
 
 #ifdef VM
 #include "vm/page.h"
@@ -320,11 +321,9 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-
-#ifdef USERPROG
-  process_exit ();
-  printf("%s: exit(%d)\n",thread_name(),thread_current()->record);
-#endif
+//#ifdef USERPROG
+  process_exit();
+//#endif
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us

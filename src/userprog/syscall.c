@@ -262,12 +262,14 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(stack_pointer + 1, stack_pointer);//fd
       check_address(stack_pointer + 2, stack_pointer);//*address
       check_address(*(stack_pointer + 2), stack_pointer);
+      printf("sys_mmap system call\n");
       mapid_t ret = sys_mmap(*(stack_pointer + 1), *(stack_pointer + 2));
       f->eax = ret;
       break;
 
     case SYS_MUNMAP:
       check_address(stack_pointer + 1, stack_pointer);//mmapid_t
+      printf("sys_unmmap system call\n");
       sys_unmmap(*(stack_pointer + 1));
       break;
 #endif

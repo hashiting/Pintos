@@ -205,10 +205,7 @@ process_exit (void)
   uint32_t *pd;
 
 #ifdef VM
-  /* Destroy page_table */
-  struct hash* page_table = cur->page_table;
-  page_table_free(page_table);
-  cur->page_table = NULL;
+
   /* unmmap */
   struct list mmaps = cur->mmaps;
   while(!list_empty(&mmaps)){
@@ -216,6 +213,11 @@ process_exit (void)
     struct map_info *map_info = list_entry(e, struct map_info, elem);
     sys_unmmap(map_info->id);
   }
+
+  /* Destroy page_table */
+  struct hash* page_table = cur->page_table;
+  page_table_free(page_table);
+  cur->page_table = NULL;
 #endif
 
   /* Destroy the current process's page directory and switch back
@@ -420,7 +422,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
                   read_bytes = 0;
                   zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
                 }
-              if (!load_segment (file, file_page, (void *) mem_page,
+              if (!load_segment (file, file_page, (void *) mem_page, 
                                  read_bytes, zero_bytes, writable))
                 goto done;
             }
@@ -517,6 +519,7 @@ static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
 {
+  //printf("come into load\n");
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
@@ -536,39 +539,32 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       ofs, read_bytes, zero_bytes, writable);
     if(!success)
       return false;
-    void *kpage = frame_allocate (PAL_USER, upage)->kernel_address;
-    kpage = (uint8_t *)kpage;
+    //printf("Test1\n");
+    //void *kpage = frame_allocate (PAL_USER, upage)->kernel_address;
+    //kpage = (uint8_t *)kpage;
 #else
     uint8_t *kpage = palloc_get_page (PAL_USER);
-#endif
     if (kpage == NULL)
         return false;
-
+      //printf("Test2\n");
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
-#ifdef VM
-        struct frame_entry* entry = kad2fe(kpage);
-        frame_free(entry);
-#else
+        //printf("Test3\n");
         palloc_free_page (kpage);
-#endif
+          //printf("Test4\n");
           return false;
         }
+      ////printf("Test5\n");
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
+      //printf("Test6\n");
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable)) 
         {
-#ifdef VM
-        struct frame_entry* entry = kad2fe(kpage);
-        frame_free(entry);
-#else
-        palloc_free_page (kpage);
-#endif
+          palloc_free_page (kpage);
           return false; 
         }
-
+#endif
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
@@ -587,23 +583,15 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-#ifdef VM
-  kpage = (uint8_t *)(frame_allocate(PAL_USER | PAL_ZERO, ((uint8_t *) PHYS_BASE) - PGSIZE)->kernel_address);
-#else
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-#endif
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
+      if (success){
         *esp = PHYS_BASE;
+      }
       else{
-#ifdef VM
-        struct frame_entry* entry = kad2fe(kpage);
-        frame_free(entry);
-#else
         palloc_free_page (kpage);
-#endif
       }
     }
   return success;

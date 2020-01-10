@@ -241,6 +241,7 @@ mapid_t sys_mmap(int fd, void *user_address){
   if (user_address == NULL || pg_ofs(user_address) != 0){
     return -1;
   }
+  //printf("fd is %d\n",fd);
   if(fd <= 1){
     return -1;
   }
@@ -248,11 +249,20 @@ mapid_t sys_mmap(int fd, void *user_address){
   struct thread *t = thread_current();
 
   file_sema_down();
-  struct file* temp_file = file_reopen(fd2fp(fd));
+  //printf("0\n");
+  struct file* tt = fd2fp(fd);
+  if(tt == NULL){
+    file_sema_up();
+    return -1;
+  }
+  struct file* temp_file = file_reopen(tt);
+  //printf("1\n");
   if(temp_file != NULL){
-    off_t len = file_length(temp_file);//len = 0?
+  //printf("2\n");
+    off_t len = file_length(temp_file);//len = 0？
     for(int i = 0;i < len;i += PGSIZE){
       void *temp = user_address + i;
+      //printf("sadas\n");
       if(get_page_entry(t->page_table,temp)!=NULL){
           file_sema_up();
           return -1;

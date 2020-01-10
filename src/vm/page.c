@@ -293,7 +293,7 @@ bool sys_unmmap(mapid_t id)
     int bytes = PGSIZE;
     if(file_size - ofs < PGSIZE)
       bytes = file_size - ofs;
-    void *upage = map_info->user_address;
+    void *upage = map_info->user_address + ofs;
     struct page_entry *page_entry = get_page_entry(t->page_table, upage);
     ASSERT(page_entry != NULL)
     struct frame_entry *frame_entry = kad2fe(page_entry->kernel_address);

@@ -92,6 +92,8 @@ void Set_page_swap(struct hash *h, void* user_address,int swap){
     struct page_entry* temp = get_page_entry(h,user_address);
 //    set_page_entry(user_address,NULL,SWAP,swap);
     temp->status = SWAP;
+    temp->swap = swap;
+    temp->kernel_address = NULL;
 }
 
 bool Install_page_in_file(struct hash *h, void *user_address, struct file *file,

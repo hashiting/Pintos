@@ -9,7 +9,7 @@
 
 static mapid_t map_increase_id = 1;
 enum page_status{
-    INVALID,
+    //INVALID,
     FRAME,
     SWAP,
     NEW,

@@ -286,10 +286,13 @@ syscall_handler (struct intr_frame *f UNUSED)
       }
       break;
     case SYS_MMAP:
+    //printf("into\n");
       check_address1(stack_pointer + 1, stack_pointer);//fd
       check_address1(stack_pointer + 2, stack_pointer);//*address
       check_address1(*(stack_pointer + 2), stack_pointer);
+      //printf("do\n");
       mapid_t ret = sys_mmap(*(stack_pointer + 1), *(stack_pointer + 2));
+      //printf("done\n");
       f->eax = ret;
       break;
 

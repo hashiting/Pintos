@@ -631,6 +631,7 @@ install_page (void *upage, void *kpage, bool writable)
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 #ifdef VM
   ret = ret && Install_page_in_frame(t->page_table, upage, kpage);
+//  printf("install page in frame, upage: %p, kpage: %p, pagedir getpage: %p\n", upage, kpage,pagedir_get_page (t->pagedir, upage));
   if(ret){
     struct frame_entry* entry = kad2fe(kpage);
     frame_unpin(entry);

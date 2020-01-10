@@ -9,10 +9,20 @@
 
 static mapid_t map_increase_id = 1;
 enum page_status{
+    INVALID,
     FRAME,
     SWAP,
     NEW,
     FILE
+};
+
+struct map_info
+{
+    struct list_elem elem;
+    struct file* file;
+    mapid_t id;
+    void* user_address;
+    int size;
 };
 
 struct page_entry{
@@ -28,15 +38,6 @@ struct page_entry{
     int read_bytes;
     int zero_bytes;
     bool writable;
-};
-
-struct map_info
-{
-    struct list_elem elem;
-    struct file* file;
-    mapid_t id;
-    void* user_address;
-    int size;
 };
 
 struct hash* page_table_init();//by thread

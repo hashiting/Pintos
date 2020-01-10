@@ -51,7 +51,9 @@ struct page_entry* set_page_entry(void* user_address, void* kernel_address,enum 
 struct page_entry* get_page_entry(struct hash *h,void *user_address){
     struct page_entry* temp = (struct page_entry*)malloc(sizeof(struct page_entry));
     temp->user_address = user_address;
+//    printf("before get page entry user address %p, helem %p\n", user_address, temp->helem);
     struct hash_elem *helem = hash_find(h,&temp->helem);
+//  printf("after get page entry user address %p helem %p\n", hash_entry(helem,struct page_entry,helem)->user_address,helem);
     if(helem != NULL){
         free(temp);
         return hash_entry(helem,struct page_entry,helem);
@@ -61,6 +63,7 @@ struct page_entry* get_page_entry(struct hash *h,void *user_address){
 
 bool Install_page_in_frame(struct hash *h, void *user_address, void *kernel_address)
 {
+//  printf("setting page in frame user address: %p\n", user_address);
     struct page_entry* temp = set_page_entry(user_address,kernel_address,FRAME,-100);
     temp->dirty = false;
     struct hash_elem *helem = hash_insert(h,&temp->helem);
@@ -87,7 +90,8 @@ bool Install_new_page(struct hash* h,void *user_address){
 
 void Set_page_swap(struct hash *h, void* user_address,int swap){
     struct page_entry* temp = get_page_entry(h,user_address);
-    set_page_entry(user_address,NULL,SWAP,swap);
+//    set_page_entry(user_address,NULL,SWAP,swap);
+    temp->status = SWAP;
 }
 
 bool Install_page_in_file(struct hash *h, void *user_address, struct file *file,

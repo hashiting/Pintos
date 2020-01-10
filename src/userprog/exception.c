@@ -154,6 +154,12 @@ page_fault (struct intr_frame *f)
   /* Project3: implement virtual memory */
   struct thread *t = thread_current();
   struct page_entry *page_entry = get_page_entry(t->page_table, pg_round_down(fault_addr));
+//  if(page_entry->status == FRAME){
+//    printf("page fault on paging frame, upage: %p, kpage: %p, rounddown: %p\n",
+//      page_entry->user_address, page_entry->kernel_address, pg_round_down(fault_addr));
+//  }
+  ASSERT(page_entry->status != INVALID);
+  ASSERT(page_entry == NULL || page_entry->status != FRAME);
   if(page_entry != NULL && page_entry->status != FRAME){
     bool ret = load_page(t->page_table, t->pagedir, pg_round_down(fault_addr));
     if(ret)

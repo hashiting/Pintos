@@ -163,7 +163,7 @@ page_fault (struct intr_frame *f)
   && (PHYS_BASE - pg_round_down(fault_addr)) <= 0x800000
   && get_page_entry(t->page_table, pg_round_down(fault_addr)) == NULL){
     //stack growth
-    Install_new_page(t->page_table, pg_round_down(fault_addr));
+    if(Install_new_page(t->page_table, pg_round_down(fault_addr)));
       return;
   }
 #endif

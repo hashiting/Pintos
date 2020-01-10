@@ -238,10 +238,13 @@ mapid_t mmap_insert(struct file* file,void* user_address,int file_size){
 }
 
 mapid_t sys_mmap(int fd, void *user_address){
-  if (user_address == NULL || pg_ofs(user_address) != 0) return -1;
+  if (user_address == NULL || pg_ofs(user_address) != 0){
+    return -1;
+  }
   if(fd <= 1){
     return -1;
   }
+  //printf("user_address is %p",user_address);
   struct thread *t = thread_current();
 
   file_sema_down();

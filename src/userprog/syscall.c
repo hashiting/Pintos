@@ -54,6 +54,26 @@ void check_address(void *p, int *stack_pointer)
   if(p == NULL||!is_user_vaddr(p)){
     error_exit();
   } else if (!pagedir_get_page(t->pagedir,p)){
+    error_exit();
+  } else{
+    return;
+  }
+}
+
+void check_address1(void *p, int *stack_pointer)
+{
+  struct thread *t = thread_current();
+  if(p == NULL||!is_user_vaddr(p)){
+#ifdef VM
+  if(p == NULL){
+    return;
+  }else{
+    error_exit();
+  }
+#else
+    error_exit();
+#endif
+  } else if (!pagedir_get_page(t->pagedir,p)){
 #ifdef VM
   struct thread *t = thread_current();
   struct page_entry *page_entry = get_page_entry(t->page_table, pg_round_down(p));
@@ -61,7 +81,7 @@ void check_address(void *p, int *stack_pointer)
     bool ret = load_page(t->page_table, t->pagedir, pg_round_down(p));
     if(ret)
       return;
-  }else if(page_entry==NULL&&(p >= stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 8)
+  }else if(page_entry==NULL&&(p >= stack_pointer || p == stack_pointer - 1 || p == stack_pointer - 4)
     && (PHYS_BASE - pg_round_down(p)) <= 0x800000
     && get_page_entry(t->page_table, pg_round_down(p)) == NULL){
       if(Install_new_page(t->page_table, pg_round_down(p)))
@@ -266,15 +286,15 @@ syscall_handler (struct intr_frame *f UNUSED)
       }
       break;
     case SYS_MMAP:
-      check_address(stack_pointer + 1, stack_pointer);//fd
-      check_address(stack_pointer + 2, stack_pointer);//*address
-      check_address(*(stack_pointer + 2), stack_pointer);
+      check_address1(stack_pointer + 1, stack_pointer);//fd
+      check_address1(stack_pointer + 2, stack_pointer);//*address
+      check_address1(*(stack_pointer + 2), stack_pointer);
       mapid_t ret = sys_mmap(*(stack_pointer + 1), *(stack_pointer + 2));
       f->eax = ret;
       break;
 
     case SYS_MUNMAP:
-      check_address(stack_pointer + 1, stack_pointer);//mmapid_t
+      check_address1(stack_pointer + 1, stack_pointer);//mmapid_t
       sys_unmmap(*(stack_pointer + 1));
       break;
     default:

@@ -6,16 +6,15 @@
 
 #define MAX_FILESYS_CACHE_SIZE 64
 
-struct cache_entry{
+struct filesys_cache_entry{
     bool free;
     block_sector_t disk_sector;
     uint8_t data[BLOCK_SECTOR_SIZE];
     bool dirty;
     bool accessed;
-    bool read;
 };
 
-struct cache_entry cache[MAX_FILESYS_CACHE_SIZE];
+struct filesys_cache_entry cache[MAX_FILESYS_CACHE_SIZE];
 struct lock filesys_cache_lock;
 
 void filesys_cache_init();

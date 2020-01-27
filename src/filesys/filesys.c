@@ -51,8 +51,8 @@ filesys_done (void)
 bool
 filesys_create (const char *name, off_t initial_size,bool in_dir) 
 {
-  char *dirtion = (char*) malloc(sizeof(char)*(strlen(name) + 1));
-  char *real_name = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  char dirtion[strlen(name)];
+  char real_name[strlen(name)];
   seperate_filename(name,dirtion,real_name);
   block_sector_t inode_sector = 0;
   //struct dir *dir = dir_open_root ();
@@ -76,8 +76,8 @@ filesys_create (const char *name, off_t initial_size,bool in_dir)
 struct file *
 filesys_open (const char *name)
 {
-  char *dirtion = (char*) malloc(sizeof(char)*(strlen(name) + 1));
-  char *real_name = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  char dirtion[strlen(name)];
+  char real_name[strlen(name)];
   seperate_filename(name,dirtion,real_name);
   struct dir *dir = dir_open_path(dirtion);
   struct inode *inode = NULL;
@@ -96,8 +96,8 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  char *dirtion = (char*) malloc(sizeof(char)*(strlen(name) + 1));
-  char *real_name = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  char dirtion[strlen(name)];
+  char real_name[strlen(name)];
   seperate_filename(name,dirtion,real_name);
   struct dir *dir = dir_open_path(dirtion);
   bool success = dir != NULL && dir_remove (dir, real_name);

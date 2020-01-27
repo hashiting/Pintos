@@ -30,27 +30,26 @@ void seperate_filename(char* path,char* dir,char* name){
   char* dir_temp = dir;
   if(len > 0){
     if(path[0] == '/'){
-      if(dir != NULL){
+      if(dir_temp){
         *dir_temp = '/';
         dir_temp++;
       }
     }
   }
+
   char* ptr;
   char* temp_token = "";
   for(char *token = strtok_r(temp,"/",&ptr);token!= NULL;token = strtok_r(NULL,"/",&ptr)){
     int ll = strlen(temp_token);
-    if(ll>0&&dir_temp!= NULL){
+    if(ll>0&&dir_temp){
       memcpy(dir_temp,temp_token,sizeof(char)*ll);
-      dir_temp += ll;
-      *dir_temp = '/';
-      dir_temp ++;
+      dir_temp[ll] = '/';
+      dir_temp += (ll + 1);
     }
-
     temp_token = token;
   }
 
-  if(dir_temp != NULL){
+  if(dir_temp){
     *dir_temp = '\0';
   }
   memcpy(name,temp_token,sizeof(char)*(strlen(temp_token) + 1));
@@ -93,7 +92,7 @@ dir_open_root (void)
 }
 
 struct dir* dir_open_path(char *path){
-  char *temp = (char*) malloc(sizeof(char)*(strlen(path) + 1));
+  char temp[strlen(path) + 1];
   strlcpy(temp, path, strlen(path) + 1);
 
   struct dir *curr;//solve relative path

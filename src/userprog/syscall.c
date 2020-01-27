@@ -97,7 +97,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(*(stack_pointer+1));//address of file head
       check_address(stack_pointer+2);//address of file size
       file_sema_down();
-      f->eax = filesys_create(*(stack_pointer+1),*(stack_pointer+2));
+      f->eax = filesys_create(*(stack_pointer+1),*(stack_pointer+2),false);
       file_sema_up();
       break;
 

@@ -21,12 +21,46 @@ struct dir_entry
     bool in_use;                        /* In use or free? */
   };
 
+void seperate_filename(char* path,char* dir,char* name){
+  int len = strlen(path);
+  char *temp = (char*) malloc(sizeof(char)*(len + 1));
+  memcpy(temp,path,sizeof(char)*(len+1));
+  
+  char* dir_temp = dir;
+  if(len > 0){
+    if(path[0] == '/'){
+      if(dir != NULL){
+        *dir_temp = '/';
+        dir_temp++;
+      }
+    }
+  }
+  char* ptr;
+  char* temp_token = "";
+  for(char *token = strtok_r(temp,"/",&ptr);token!= NULL;token = strtok_r(NULL,"/",&ptr)){
+    int ll = strlen(temp_token);
+    if(ll>0&&dir_temp!= NULL){
+      memcpy(dir_temp,temp_token,sizeof(char)*ll);
+      dir_temp += ll;
+      *dir_temp = '/';
+      dir_temp ++;
+    }
+
+    temp_token = token;
+  }
+
+  if(dir_temp != NULL){
+    *dir_temp = '\0';
+  }
+  memcpy(name,temp_token,sizeof(char)*(strlen(temp_token) + 1));
+  free(temp);
+}
 /* Creates a directory with space for ENTRY_CNT entries in the
    given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  return inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);//add true?
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -55,6 +89,32 @@ struct dir *
 dir_open_root (void)
 {
   return dir_open (inode_open (ROOT_DIR_SECTOR));
+}
+
+struct dir* dir_open_path(char *path){
+  char *temp = (char*) malloc(sizeof(char)*(strlen(path) + 1));
+  strlcpy(temp, path, strlen(path) + 1);
+
+  struct dir *curr = dir_open_root();
+
+  // tokenize, and traverse the tree
+  char *ptr;
+  for (char *token = strtok_r(temp, "/", &ptr); token != NULL;token = strtok_r(NULL, "/", &ptr)){
+    struct inode *inode = NULL;
+    if(!dir_lookup(curr, token, &inode)) {
+      dir_close(curr);
+      return NULL; // not exist
+    }
+    struct dir *next = dir_open(inode);
+    if(next == NULL) {
+      dir_close(curr);
+      return NULL;
+    }
+    dir_close(curr);
+    curr = next;
+  }
+
+  return curr;
 }
 
 /* Opens and returns a new directory for the same inode as DIR.

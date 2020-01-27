@@ -48,13 +48,17 @@ filesys_done (void)
    Fails if a file named NAME already exists,
    or if internal memory allocation fails. */
 bool
-filesys_create (const char *name, off_t initial_size) 
+filesys_create (const char *name, off_t initial_size,bool in_dir) 
 {
+  char *dirtion = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  char *real_name = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  seperate_filename(name,dirtion,real_name);
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  //struct dir *dir = dir_open_root ();
+  struct dir *dir = dir_open_path(dirtion);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size)
+                  && inode_create (inode_sector, initial_size,in_dir)
                   && dir_add (dir, name, inode_sector));
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
@@ -71,11 +75,14 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  char *dirtion = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  char *real_name = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  seperate_filename(name,dirtion,real_name);
+  struct dir *dir = dir_open_path(dirtion);
   struct inode *inode = NULL;
 
   if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+    dir_lookup (dir, real_name, &inode);
   dir_close (dir);
 
   return file_open (inode);
@@ -88,8 +95,11 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
+  char *dirtion = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  char *real_name = (char*) malloc(sizeof(char)*(strlen(name) + 1));
+  seperate_filename(name,dirtion,real_name);
+  struct dir *dir = dir_open_path(dirtion);
+  bool success = dir != NULL && dir_remove (dir, real_name);
   dir_close (dir); 
 
   return success;

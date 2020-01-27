@@ -23,7 +23,8 @@ struct inode_disk
     block_sector_t direct_blocks[DIRECT_BLOCK_COUNT];
     block_sector_t indirect_block;
     block_sector_t doubly_indirect_block;
-
+    
+    bool in_dir;//if in dir
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
 //    uint32_t unused[125];               /* Not used. */
@@ -117,7 +118,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, bool in_dir)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -133,6 +134,7 @@ inode_create (block_sector_t sector, off_t length)
     {
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
+      disk_inode->in_dir = in_dir;
       if (inode_allocate(disk_inode, disk_inode->length))
         {
           filesys_cache_write(sector, disk_inode);

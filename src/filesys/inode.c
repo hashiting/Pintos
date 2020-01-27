@@ -390,6 +390,10 @@ inode_length (const struct inode *inode)
   return inode->data.length;
 }
 
+bool in_dir(struct inode* inode){
+  return inode->data.in_dir;
+}
+
 static void inode_indirect_allocate(block_sector_t* sector, size_t sectors_count, int level){
   static char dummy[BLOCK_SECTOR_SIZE];
 

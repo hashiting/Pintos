@@ -9,8 +9,19 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "filesys/inode.h"
+#include "filesys/directory.h"
 
 static void syscall_handler (struct intr_frame *);
+
+struct file_search* fd2fs(int fd){
+  for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
+        //printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
+        if(list_entry(e,struct file_search,elem)->fd == fd){
+          return list_entry(e,struct file_search,elem);
+        }
+    }
+  return NULL;
+}
 
 bool sys_chdir(char* name){
   struct dir *dir = dir_open_path (name);
@@ -20,9 +31,19 @@ bool sys_chdir(char* name){
   return true;
 }
 
-bool sys_mkdir(char* name){
+bool sys_readir(int fd,char* name){
+  struct file_search* temp = fd2fs(fd);
+  if(temp == NULL) return false;
+  struct inode *inode;
+  inode = file_get_inode(temp->fp);
+  if(inode == NULL||!in_dir(inode)) return false;
 
+  ASSERT(temp->dir != NULL);
+
+  return dir_readdir(temp->dir,name);
 }
+
+
 void
 syscall_init (void) 
 {
@@ -191,6 +212,14 @@ syscall_handler (struct intr_frame *f UNUSED)
         temp1->fd = thread_current()->increase_file_id_generate;
         thread_current()->increase_file_id_generate++;
         list_push_back(&thread_current()->files,&temp1->elem);
+
+        struct inode *inode= file_get_inode(target_file);
+        if(inode != NULL && in_dir(inode)){
+          temp1->dir = dir_open(inode);
+        }
+        else{
+          temp1->dir = NULL;
+        }
         f->eax = temp1->fd;
       }
       else{
@@ -205,6 +234,9 @@ syscall_handler (struct intr_frame *f UNUSED)
         if(list_entry(e,struct file_search,elem)->fd == *(stack_pointer+1)){
           file_sema_down();
           file_close(list_entry(e,struct file_search,elem)->fp);
+          if(list_entry(e,struct file_search,elem)->dir){
+            dir_close(list_entry(e,struct file_search,elem)->dir);
+          }
           file_sema_up();
           list_remove(e);
         }
@@ -264,14 +296,23 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_READDIR:
       check_address(stack_pointer+1);
       check_address(stack_pointer+2);
+      file_sema_down();
+      f->eax = sys_readir(*(stack_pointer+1),*(stack_pointer+2));
+      file_sema_up();
       break;
 
     case SYS_ISDIR:
       check_address(stack_pointer+1);
+      file_sema_down();
+      f->eax = in_dir(file_get_inode(fd2fp(*(stack_pointer+1))));
+      file_sema_up();
       break;
 
     case SYS_INUMBER:
       check_address(stack_pointer+1);
+      file_sema_down();
+      f->eax = (int)inode_get_inumber(file_get_inode(fd2fp(*(stack_pointer+1))));
+      file_sema_up();
       break;
 
     default:

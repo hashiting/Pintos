@@ -122,6 +122,7 @@ struct file_search{
   struct file* fp;
   int fd;
   struct list_elem elem;
+  struct dir* dir;
 };
 
 struct self_info{

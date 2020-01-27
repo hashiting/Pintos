@@ -60,7 +60,17 @@ void seperate_filename(char* path,char* dir,char* name){
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);//
+  bool result = inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);
+  if(!result) return result;
+
+  struct dir* dir = dir_open(inode_open(sector));
+  struct dir_entry e;
+  e.inode_sector = sector;
+  if(inode_write_at(dir->inode,&e,sizeof(e),0) != sizeof(e)){
+    result = false;
+  }
+  dir_close(dir);
+  return result;
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -72,7 +82,7 @@ dir_open (struct inode *inode)
   if (inode != NULL && dir != NULL)
     {
       dir->inode = inode;
-      dir->pos = 0;
+      dir->pos = sizeof(struct dir_entry);
       return dir;
     }
   else
@@ -173,7 +183,7 @@ lookup (const struct dir *dir, const char *name,
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
-  for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+  for (ofs = sizeof(e); inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
        ofs += sizeof e) 
     if (e.in_use && !strcmp (name, e.name)) 
       {
@@ -199,7 +209,14 @@ dir_lookup (const struct dir *dir, const char *name,
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
-  if (lookup (dir, name, &e, NULL))
+  if(strcmp(name,".") == 0){
+    *inode = inode_reopen(dir->inode);
+  }
+  else if(strcmp(name, "..") == 0){
+    inode_read_at(dir->inode,&e,sizeof(e),0);
+    *inode = inode_open(e.inode_sector);
+  }
+  else if (lookup (dir, name, &e, NULL))
     *inode = inode_open (e.inode_sector);
   else
     *inode = NULL;
@@ -214,7 +231,7 @@ dir_lookup (const struct dir *dir, const char *name,
    Fails if NAME is invalid (i.e. too long) or a disk or memory
    error occurs. */
 bool
-dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
+dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool in_dir)
 {
   struct dir_entry e;
   off_t ofs;
@@ -231,6 +248,16 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   if (lookup (dir, name, NULL, NULL))
     goto done;
 
+  if(in_dir){
+    struct dir* sub_dir = dir_open(inode_open(inode_sector));
+    if(sub_dir == NULL) goto done;
+    e.inode_sector = inode_get_inumber(dir_get_inode(dir));
+    if(inode_write_at(sub_dir,&e,sizeof(e),0) != sizeof(e)){
+      dir_close(sub_dir);
+      goto done;
+    }
+    dir_close(sub_dir);
+  }
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the
      current end-of-file.
@@ -280,7 +307,7 @@ dir_remove (struct dir *dir, const char *name)
     struct dir* temp = dir_open(inode);
     bool empty = true;
     struct dir_entry e;
-    for (off_t i = 0; inode_read_at (dir->inode, &e, sizeof(e), i) == sizeof(e);i += sizeof(e))
+    for (off_t i = sizeof(e); inode_read_at (dir->inode, &e, sizeof(e), i) == sizeof(e);i += sizeof(e))
     {
       if (e.in_use){
         empty = false;

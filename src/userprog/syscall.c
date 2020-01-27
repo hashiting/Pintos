@@ -215,7 +215,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
         struct inode *inode= file_get_inode(target_file);
         if(inode != NULL && in_dir(inode)){
-          temp1->dir = dir_open(inode);
+          temp1->dir = dir_open(inode_reopen(inode));
         }
         else{
           temp1->dir = NULL;

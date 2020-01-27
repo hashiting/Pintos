@@ -133,6 +133,12 @@ start_process (void *file_name_)
 
     thread_current()->parent->success = true;
     //free(arg);
+    if (thread_current()->parent != NULL && thread_current()->parent->cwd != NULL) {
+      thread_current()->cwd = dir_reopen(thread_current()->parent->cwd);
+    }
+    else {
+      thread_current()->cwd = dir_open_root();
+    }
   }
   
   sema_up(&thread_current()->parent->child_lock);

@@ -76,6 +76,7 @@ filesys_create (const char *name, off_t initial_size,bool in_dir)
 struct file *
 filesys_open (const char *name)
 {
+  if(strlen(name) == 0) return NULL;
   char dirtion[strlen(name)];
   char real_name[strlen(name)];
   seperate_filename(name,dirtion,real_name);

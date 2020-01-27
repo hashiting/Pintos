@@ -127,6 +127,7 @@ inode_create (block_sector_t sector, off_t length, bool in_dir)
 
   /* If this assertion fails, the inode structure is not exactly
      one sector in size, and you should fix that. */
+
   ASSERT (sizeof *disk_inode == BLOCK_SECTOR_SIZE);
 
   disk_inode = calloc (1, sizeof *disk_inode);
@@ -392,6 +393,10 @@ inode_length (const struct inode *inode)
 
 bool in_dir(struct inode* inode){
   return inode->data.in_dir;
+}
+
+bool is_remove(struct inode* i){
+  return i->removed;
 }
 
 static void inode_indirect_allocate(block_sector_t* sector, size_t sectors_count, int level){

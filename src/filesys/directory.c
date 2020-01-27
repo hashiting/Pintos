@@ -60,7 +60,7 @@ void seperate_filename(char* path,char* dir,char* name){
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);//add true?
+  return inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);//
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -122,6 +122,11 @@ struct dir* dir_open_path(char *path){
     }
     dir_close(curr);
     curr = next;
+  }
+
+  if (is_remove(dir_get_inode(curr))){
+    dir_close(curr);
+    return NULL;
   }
 
   return curr;
@@ -271,6 +276,21 @@ dir_remove (struct dir *dir, const char *name)
   if (inode == NULL)
     goto done;
 
+  if(in_dir(inode)){
+    struct dir* temp = dir_open(inode);
+    bool empty = true;
+    struct dir_entry e;
+    for (off_t i = 0; inode_read_at (dir->inode, &e, sizeof(e), i) == sizeof(e);i += sizeof(e))
+    {
+      if (e.in_use){
+        empty = false;
+        break;
+      }
+        
+    }
+    dir_close(temp);
+    if(!empty) goto done;
+  }
   /* Erase directory entry. */
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 

@@ -20,7 +20,9 @@ struct lock filesys_cache_lock;
 void filesys_cache_init();
 void filesys_cache_close();
 
-void filesys_cache_read(block_sector_t sector, void *uaddr);//read SECTOR_SIZE bytes
-void filesys_cache_write(block_sector_t sector, void *uaddr);//write SECTOR_SIZE bytes
+//copy BLOCK_SECTOR_SIZE bytes of cache to uaddr
+void filesys_cache_read(block_sector_t sector, void *uaddr);
+//copy BLOCK_SECTOR_SIZE bytes of uaddr to cache
+void filesys_cache_write(block_sector_t sector, void *uaddr);
 
 #endif //FILESYS_CACHE_H

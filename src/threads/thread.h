@@ -102,6 +102,7 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
+    struct dir* cwd;
     int record;                         //exit code
     struct thread* parent;
     struct list childs;

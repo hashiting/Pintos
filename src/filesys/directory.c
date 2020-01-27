@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /* A directory. */
 struct dir 
@@ -95,8 +96,18 @@ struct dir* dir_open_path(char *path){
   char *temp = (char*) malloc(sizeof(char)*(strlen(path) + 1));
   strlcpy(temp, path, strlen(path) + 1);
 
-  struct dir *curr = dir_open_root();
-
+  struct dir *curr;//solve relative path
+  if(path[0] == '/'){
+    curr = dir_open_root();
+  }
+  else{
+    if(thread_current()->cwd == NULL){
+      curr = dir_open_root();
+    }
+    else{
+      curr = dir_reopen(thread_current()->cwd);
+    }
+  }
   // tokenize, and traverse the tree
   char *ptr;
   for (char *token = strtok_r(temp, "/", &ptr); token != NULL;token = strtok_r(NULL, "/", &ptr)){

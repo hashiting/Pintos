@@ -8,9 +8,21 @@
 #include "process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "filesys/inode.h"
 
 static void syscall_handler (struct intr_frame *);
 
+bool sys_chdir(char* name){
+  struct dir *dir = dir_open_path (name);
+  if(dir == NULL) return false;
+  dir_close (thread_current()->cwd);
+  thread_current()->cwd = dir;
+  return true;
+}
+
+bool sys_mkdir(char* name){
+
+}
 void
 syscall_init (void) 
 {
@@ -45,6 +57,9 @@ void exit_(){
     file_sema_up();
     list_remove(e);
     free(f);
+  }
+  if(thread_current()->cwd){
+    dir_close(thread_current()->cwd);
   }
   thread_exit();
 }
@@ -230,6 +245,33 @@ syscall_handler (struct intr_frame *f UNUSED)
       else{
         f->eax = -1;
       }
+      break;
+
+    case SYS_CHDIR:
+      check_address(stack_pointer+1);
+      file_sema_down();
+      f->eax = sys_chdir(*(stack_pointer+1));
+      file_sema_up();
+      break;
+    
+    case SYS_MKDIR:
+      check_address(stack_pointer+1);
+      file_sema_down();
+      f->eax = filesys_create(*(stack_pointer+1),0,true);
+      file_sema_up();
+      break;
+
+    case SYS_READDIR:
+      check_address(stack_pointer+1);
+      check_address(stack_pointer+2);
+      break;
+
+    case SYS_ISDIR:
+      check_address(stack_pointer+1);
+      break;
+
+    case SYS_INUMBER:
+      check_address(stack_pointer+1);
       break;
 
     default:

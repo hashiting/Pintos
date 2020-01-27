@@ -409,6 +409,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
         }
     }
 
+  t->cwd = dir_open_root();
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;

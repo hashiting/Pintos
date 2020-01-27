@@ -386,11 +386,13 @@ inode_length (const struct inode *inode)
 }
 
 static void inode_indirect_allocate(block_sector_t* sector, size_t sectors_count, int level){
-  char dummy[BLOCK_SECTOR_SIZE];
+  static char dummy[BLOCK_SECTOR_SIZE];
 
-  //allocate self
-  free_map_allocate(1, sector);
-  filesys_cache_write(*sector, dummy);
+  if(*sector == 0){
+    free_map_allocate(1, sector);
+    filesys_cache_write(*sector, dummy);
+  }
+
   if(level == 0)
     return;
 

@@ -399,16 +399,17 @@ bool is_remove(struct inode* i){
   return i->removed;
 }
 
-static void inode_indirect_allocate(block_sector_t* sector, size_t sectors_count, int level){
+static bool inode_indirect_allocate(block_sector_t* sector, size_t sectors_count, int level){
   static char dummy[BLOCK_SECTOR_SIZE];
 
   if(*sector == 0){
-    free_map_allocate(1, sector);
+    if(!free_map_allocate(1, sector))
+      return false;
     filesys_cache_write(*sector, dummy);
   }
 
   if(level == 0)
-    return;
+    return true;
 
   struct inode_indirect_block temp_indirect_block;
   filesys_cache_read(*sector, &temp_indirect_block);//read from the cache just written
@@ -427,12 +428,14 @@ static void inode_indirect_allocate(block_sector_t* sector, size_t sectors_count
       allocating = sectors_count < 1 ? sectors_count : 1;
     else
       allocating = sectors_count < INDIRECT_BLOCK_POINTERS_PER_SECTOR ? sectors_count : INDIRECT_BLOCK_POINTERS_PER_SECTOR;
-    inode_indirect_allocate(&temp_indirect_block.blocks[i], allocating, level - 1);
+    if(!inode_indirect_allocate(&temp_indirect_block.blocks[i], allocating, level - 1))
+      return false;
     sectors_count -= allocating;
   }
 
   ASSERT(sectors_count == 0);
   filesys_cache_write(*sector, &temp_indirect_block);//write newly allocated blocks to the cache
+  return true;
 }
 
 static bool inode_allocate(struct inode_disk* disk_inode, size_t length){
@@ -449,7 +452,8 @@ static bool inode_allocate(struct inode_disk* disk_inode, size_t length){
   int i;
   for(i = 0; i < allocating; i++){
     if(disk_inode->direct_blocks[i] == 0)
-      inode_indirect_allocate(&disk_inode->direct_blocks[i],1,0);
+      if(!inode_indirect_allocate(&disk_inode->direct_blocks[i],1,0))
+        return false;
   }
   sectors_count -= allocating;
   if(sectors_count == 0)
@@ -461,7 +465,8 @@ static bool inode_allocate(struct inode_disk* disk_inode, size_t length){
   }else{
     allocating = INDIRECT_BLOCK_POINTERS_PER_SECTOR;
   }
-  inode_indirect_allocate(&disk_inode->indirect_block, allocating, 1);
+  if(!inode_indirect_allocate(&disk_inode->indirect_block, allocating, 1))
+    return false;
   sectors_count -= allocating;
   if(sectors_count == 0)
     return true;
@@ -472,7 +477,8 @@ static bool inode_allocate(struct inode_disk* disk_inode, size_t length){
   } else{
     allocating = INDIRECT_BLOCK_POINTERS_PER_SECTOR * INDIRECT_BLOCK_POINTERS_PER_SECTOR;
   }
-  inode_indirect_allocate(&disk_inode->doubly_indirect_block, allocating, 2);
+  if(!inode_indirect_allocate(&disk_inode->doubly_indirect_block, allocating, 2))
+    return false;
   sectors_count -= allocating;
   if(sectors_count == 0)
     return true;

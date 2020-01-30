@@ -17,7 +17,10 @@ struct file_search* fd2fs(int fd){
   for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
         //printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
         if(list_entry(e,struct file_search,elem)->fd == fd){
-          return list_entry(e,struct file_search,elem);
+          if(list_entry(e,struct file_search,elem)->dir != NULL)
+            return list_entry(e,struct file_search,elem);
+          else
+            return NULL;
         }
     }
   return NULL;
@@ -90,11 +93,24 @@ void error_exit(){
   exit_ ();
 }
 
-struct file* fd2fp(int fd){
+struct file* fd2fp(int fd,int f){
   for(struct list_elem *e = list_begin(&thread_current()->files);e != list_end(&thread_current()->files);e = list_next(e)){
         //printf("b%d\n",list_entry(e,struct file_search,elem)->fd);
         if(list_entry(e,struct file_search,elem)->fd == fd){
-          return list_entry(e,struct file_search,elem)->fp;
+          if(f == 0)
+            return list_entry(e,struct file_search,elem)->fp;
+          else if(f == 1){
+            if(list_entry(e,struct file_search,elem)->dir != NULL)
+              return list_entry(e,struct file_search,elem)->fp;
+            else
+              return NULL;
+          }
+          else{
+            if(list_entry(e,struct file_search,elem)->dir == NULL)
+              return list_entry(e,struct file_search,elem)->fp;
+            else
+              return NULL;
+          }
         }
     }
   return NULL;
@@ -159,7 +175,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         f->eax = *(stack_pointer+3);
       }
       else{
-        struct file* temp = fd2fp(*(stack_pointer+1));
+        struct file* temp = fd2fp(*(stack_pointer+1),2);
         if(temp==NULL){
           f->eax = -1;
         }
@@ -185,7 +201,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         f->eax = *(stack_pointer+3);
       }
       else{
-        struct file* temp2 = fd2fp(*(stack_pointer+1));
+        struct file* temp2 = fd2fp(*(stack_pointer+1),2);
         if(temp2==NULL){
           //printf("no find\n");
           f->eax = -1;
@@ -246,7 +262,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_FILESIZE:
       check_address(stack_pointer+1);//get fd, convert fd to file pointer.
       
-      struct file * temp3 = fd2fp(*(stack_pointer+1));
+      struct file * temp3 = fd2fp(*(stack_pointer+1),2);
       if(temp3 != NULL){
         file_sema_down();
         f->eax = file_length(temp3);//to do
@@ -262,13 +278,13 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(stack_pointer+1);//fd
       check_address(stack_pointer+2);//position
       file_sema_down();
-      file_seek(fd2fp(*(stack_pointer+1)),*(stack_pointer+2));//to do
+      file_seek(fd2fp(*(stack_pointer+1),2),*(stack_pointer+2));//to do
       file_sema_up();
       break;
 
     case SYS_TELL:
       check_address(stack_pointer+1);
-      struct file * temp4 = fd2fp(*(stack_pointer+1));
+      struct file * temp4 = fd2fp(*(stack_pointer+1),2);
       if(temp4 != NULL){
         file_sema_down();
         f->eax = file_tell(temp4);//to do
@@ -304,14 +320,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_ISDIR:
       check_address(stack_pointer+1);
       file_sema_down();
-      f->eax = in_dir(file_get_inode(fd2fp(*(stack_pointer+1))));
+      f->eax = in_dir(file_get_inode(fd2fp(*(stack_pointer+1),0)));
       file_sema_up();
       break;
 
     case SYS_INUMBER:
       check_address(stack_pointer+1);
       file_sema_down();
-      f->eax = (int)inode_get_inumber(file_get_inode(fd2fp(*(stack_pointer+1))));
+      f->eax = (int)inode_get_inumber(file_get_inode(fd2fp(*(stack_pointer+1),0)));
       file_sema_up();
       break;
 

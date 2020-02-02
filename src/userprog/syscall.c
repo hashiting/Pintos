@@ -79,7 +79,7 @@ void exit_(){
     list_remove(e);
     free(f);
   }
-  if(thread_current()->cwd){
+  if(thread_current()->cwd != NULL){
     dir_close(thread_current()->cwd);
   }
   thread_exit();

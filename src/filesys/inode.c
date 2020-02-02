@@ -399,6 +399,11 @@ bool is_remove(struct inode* i){
   return i->removed;
 }
 
+int is_open(struct inode *inode)
+{
+  return inode->open_cnt;
+}
+
 static void inode_indirect_allocate(block_sector_t* sector, size_t sectors_count, int level){
   static char dummy[BLOCK_SECTOR_SIZE];
 

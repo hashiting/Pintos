@@ -60,7 +60,7 @@ void seperate_filename(char* path,char* dir,char* name){
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);//
+  return inode_create (sector, entry_cnt * sizeof (struct dir_entry),true);
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -277,6 +277,8 @@ dir_remove (struct dir *dir, const char *name)
     goto done;
 
   if(in_dir(inode)){
+    if (is_open(inode)>1) 
+      goto done;
     struct dir* temp = dir_open(inode);
     bool empty = true;
     struct dir_entry e;

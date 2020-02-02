@@ -8,9 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Mei Chen s8mechen@stud.uni-saarland.de 2557673
+Pengqiu Li leepengqiu@gmail.com 2575746
 
 ---- PRELIMINARIES ----
 
@@ -29,14 +28,34 @@ FirstName LastName <email@domain.example>
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+struct inode_disk{                                   //one inode on disk
+    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT];//address to 123 direct blocks in one inode
+    block_sector_t indirect_block;                   //address to 1 indirect block in one inode
+    block_sector_t doubly_indirect_block;            //address to 1 doubly indirect block, which accounts for 8MB
+
+    bool in_dir;                                     //if in dir
+    off_t length;                       /* File size in bytes. */
+    unsigned magic;                     /* Magic number. */
+};
+
+struct inode_indirect_block{                         //one indirect block, containing 128 pointers to all direct or all indirect blocks
+    block_sector_t blocks[INDIRECT_BLOCK_POINTERS_PER_SECTOR];//the address of data content
+};
 
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
+    123 direct blocks: 123 * 512 = 62976 B = 61.5 KB
++   1 indirect block: 1 * 128 * 512 = 65536 B = 64 KB
++   1 doubly indirect block: 1 * 128 * 128 * 512 = 8388608 B = 8192 KB = 8 MB
+=   8517120 B = 8317.5 KB = 8.12 MB
 
 ---- SYNCHRONIZATION ----
 
 >> A3: Explain how your code avoids a race if two processes attempt to
 >> extend a file at the same time.
+Because we have used filesys_cache_lock in filesys_cache_write(). So
+when the file is extended in inode_write_at() using this function,
+there is no data race.
 
 >> A4: Suppose processes A and B both have file F open, both
 >> positioned at end-of-file.  If A reads and B writes F at the same
@@ -44,6 +63,11 @@ FirstName LastName <email@domain.example>
 >> may not read data other than what B writes, e.g. if B writes
 >> nonzero data, A is not allowed to see all zeros.  Explain how your
 >> code avoids this race.
+Similar as the last question, we use lock in filesys_cache_read() and
+filesys_cache_write(). So when inode functions such as inode_read_at()
+or inode_write_at() to read/write data block in inode, those cache
+read/write functions will be called and the lock in them will assure no
+data race.
 
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers
@@ -51,6 +75,9 @@ FirstName LastName <email@domain.example>
 >> prevent forever another process from writing the file, and many
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
+Because a process returns the filesys_cache_lock after filesys_cache_read()
+and filesys_cache_write(), so other processes have a fair chance to gain
+the lock afterwards.
 
 ---- RATIONALE ----
 
@@ -59,6 +86,11 @@ FirstName LastName <email@domain.example>
 >> indirect blocks?  If not, why did you choose an alternative inode
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
+Yes. Because we just follow the unix FFS's inode design, excluding the
+triply indirect block, because the doubly indirect block provide 8 MB
+already. Then 1 indrect block is enough. Finally the direct block number:
+because there's a unused array in struct inode_disk, so we thought why
+not add those space to direct blocks.
 
 			    SUBDIRECTORIES
 			    ==============
@@ -68,29 +100,57 @@ FirstName LastName <email@domain.example>
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+we add a new item in struct inode_disk to detect if this inode is 
+dir or file.
+struct inode_disk
+  {
+    //block_sector_t start;               /* First data sector. */
+    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT];
+    block_sector_t indirect_block;
+    block_sector_t doubly_indirect_block;
+    
+    bool in_dir;//added if in dir
+    off_t length;                       /* File size in bytes. */
+    unsigned magic;                     /* Magic number. */
+//    uint32_t unused[125];               /* Not used. */
+  };
 
+Besides,we add cwd in struct thread{
+    struct dir* cwd;
+}
+to store where is the current work directory.
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
-
+When the first character is not '/',This is relative path.For relative path,we fisrt need to get the cwd. And then parsing the path to
+access each dir and file.
+Otherwise,for absolute path,we get the root of the system,and do the same thing to access
+the dir and file. 
 ---- SYNCHRONIZATION ----
 
 >> B4: How do you prevent races on directory entries?  For example,
 >> only one of two simultaneous attempts to remove a single file
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
+We use the filesys lock to precent race.For every system call(e.g mkdir,isdir).
+So only one of them can have access to create a file. And is the second peocess want to
+create a file with the same name, it will fail.
 
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
 >> working directory?  If so, what happens to that process's future
 >> file system operations?  If not, how do you prevent it?
-
+No,we don't allow a dir to be removed if it is open. We use a function is_open() to detect
+if the dir is opened or not. the open_cnt in inode is never 0 when a directory is used as the current working directory.
 ---- RATIONALE ----
 
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
-
+The cwd is a element in struct thread.We init the cwd when initlizing thread.
+And assigned value when start the process.We use the root directory as the value 
+of cwd. Besides,the cwd should be inherited from the parent process but we don't do
+that yet because it lead to more test failure.
 			     BUFFER CACHE
 			     ============
 
@@ -99,29 +159,65 @@ FirstName LastName <email@domain.example>
 >> C1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+struct filesys_cache_entry{             //one cache entry
+    bool free;                          //free entry or not
+    block_sector_t disk_sector;         //where is the cache
+    uint8_t data[BLOCK_SECTOR_SIZE];    //the data content of the cache
+    bool dirty;                         //whether to write it back to disk
+    bool accessed;                      //second chance in cache evict algorithm
+};
+
+struct cache_entry cache[MAX_FILESYS_CACHE_SIZE];//array of 64 caches
+struct lock filesys_cache_lock;                  //protect cache operations
 
 ---- ALGORITHMS ----
 
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
+In total: 2 pass of the cache array, but can break the loop if find an
+available entry early.
+First check if there's a free cache entry in cache array, if so return early.
+Then find an unaccessed cache entry, which is bound to be found, because
+it's either already an unaccessed entry in 1st pass, or all accessed entries
+will be marked as unaccessed in 1st pass.
 
 >> C3: Describe your implementation of write-behind.
+In syscall halt, shutdown_power_off() will be called, in which filesys_done()
+will be called, in which filesys_cache_close() will be called, which is a
+function to write back to disk the dirty caches.
 
 >> C4: Describe your implementation of read-ahead.
+When we load some data to cache, we also load the hold sector into the cache block;
+If the memory access is sequential,then it will benifit the disk access.
 
 ---- SYNCHRONIZATION ----
 
 >> C5: When one process is actively reading or writing data in a
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
+When a process reads/writes, it holds the lock during the read/write
+operations in filesys_cache_read() and filesys_cache_write(). It means
+other process without the lock can't proceed with eviction.
 
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
+When a process runs the evicting algorithm, it means this process is
+currently holding the filesys_cache_lock, which also means other processes
+are not holding the lock.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
+Buffer caching: many(within the amounts of cache entries) cached content
+are to be read/written again and again.
+
+Read-ahead: large amounts of sequential read, so CPU doesn't have to wait
+every time before it reads the data from disk.
+
+Write-behind: dirty caches are written again and again, so multiple
+write-back-to-disk operations can be saved using only one write back.
+
 
 			   SURVEY QUESTIONS
 			   ================
